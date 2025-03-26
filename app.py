@@ -116,7 +116,7 @@ def handle_submission(ack, body, view, client):
     # Mensagem direta para responsável
     responsavel_id = responsaveis_slack_ids.get(data["responsavel"])
     if responsavel_id:
-        client.chat_postMessage(channel=responsavel_id, text=f"📬 Novo chamado atribuído a você:
+        client.chat_postMessage(channel=responsavel_id, text=f"📬 Novo chamado atribuído a você:\n{msg}")
 {msg}")
 
     try:
