@@ -114,8 +114,7 @@ def handle_submission(ack, body, view, client):
 
     responsavel_id = responsaveis_slack_ids.get(data["responsavel"])
     if responsavel_id:
-        client.chat_postMessage(channel=responsavel_id, text="📬 Novo chamado atribuído a você:
-Verifique o canal #ticket para mais detalhes.")
+        client.chat_postMessage(channel=responsavel_id, text="Novo chamado atribuido a voce. Verifique o canal #ticket para mais detalhes.")
 
     try:
         requests.post(webhook_url, json=data)
