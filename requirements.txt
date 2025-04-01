@@ -1,5 +1,0 @@
-slack_bolt
-python-dotenv
-requests
-sqlalchemy
-psycopg2-binary
