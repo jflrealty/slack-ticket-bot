@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# 🔧 Criação da tabela (somente se não existir)
+# Cria a tabela se ainda não existir
 DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL:
     try:
@@ -63,7 +63,10 @@ def open_modal(ack, body, client):
                         "type": "static_select",
                         "action_id": "value",
                         "placeholder": {"type": "plain_text", "text": "Escolha"},
-                        "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt} for opt in ["Lista de Espera", "Ordem de Serviço"]],
+                        "options": [
+                            {"text": {"type": "plain_text", "text": opt}, "value": opt}
+                            for opt in ["Lista de Espera", "Ordem de Serviço"]
+                        ],
                     },
                     "label": {"type": "plain_text", "text": "Tipo de Ticket"}
                 },
@@ -74,7 +77,10 @@ def open_modal(ack, body, client):
                         "type": "static_select",
                         "action_id": "value",
                         "placeholder": {"type": "plain_text", "text": "Escolha"},
-                        "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt} for opt in ["Short Stay", "Temporada", "Residencial"]],
+                        "options": [
+                            {"text": {"type": "plain_text", "text": opt}, "value": opt}
+                            for opt in ["Short Stay", "Temporada", "Residencial"]
+                        ],
                     },
                     "label": {"type": "plain_text", "text": "Tipo de Contrato"}
                 },
@@ -93,7 +99,15 @@ def open_modal(ack, body, client):
                 {
                     "type": "input",
                     "block_id": "empreendimento",
-                    "element": {"type": "plain_text_input", "action_id": "value"},
+                    "element": {
+                        "type": "static_select",
+                        "action_id": "value",
+                        "placeholder": {"type": "plain_text", "text": "Escolha"},
+                        "options": [
+                            {"text": {"type": "plain_text", "text": opt}, "value": opt}
+                            for opt in ["JFL125", "JML747", "JBR099"]
+                        ]
+                    },
                     "label": {"type": "plain_text", "text": "Empreendimento"}
                 },
                 {
@@ -104,6 +118,18 @@ def open_modal(ack, body, client):
                 },
                 {
                     "type": "input",
+                    "block_id": "data_entrada",
+                    "element": {"type": "datepicker", "action_id": "value", "placeholder": {"type": "plain_text", "text": "Selecione a data"}},
+                    "label": {"type": "plain_text", "text": "Data de Entrada"}
+                },
+                {
+                    "type": "input",
+                    "block_id": "data_saida",
+                    "element": {"type": "datepicker", "action_id": "value", "placeholder": {"type": "plain_text", "text": "Selecione a data"}},
+                    "label": {"type": "plain_text", "text": "Data de Saída"}
+                },
+                {
+                    "type": "input",
                     "block_id": "valor_locacao",
                     "element": {"type": "plain_text_input", "action_id": "value"},
                     "label": {"type": "plain_text", "text": "Valor da Locação"}
@@ -111,8 +137,12 @@ def open_modal(ack, body, client):
                 {
                     "type": "input",
                     "block_id": "responsavel",
-                    "element": {"type": "plain_text_input", "action_id": "value"},
-                    "label": {"type": "plain_text", "text": "Responsável pela OS"}
+                    "element": {
+                        "type": "users_select",
+                        "action_id": "value",
+                        "placeholder": {"type": "plain_text", "text": "Escolha uma pessoa"}
+                    },
+                    "label": {"type": "plain_text", "text": "Responsável"}
                 }
             ]
         }
@@ -121,40 +151,35 @@ def open_modal(ack, body, client):
 @app.view("chamado_modal")
 def handle_submission(ack, body, view):
     ack()
-    form_data = {block_id: view["state"]["values"][block_id]["value"]["value"] for block_id in view["state"]["values"]}
-    user_name = body["user"]["username"]
+    data = {}
+    for block_id, block_data in view["state"]["values"].items():
+        action = list(block_data.values())[0]
+        data[block_id] = action.get("selected_user") or action.get("selected_date") or action.get("selected_option", {}).get("value") or action.get("value")
 
     try:
-        valor_locacao = form_data["valor_locacao"].replace(".", "").replace(",", ".")
-        valor_locacao = float(valor_locacao)
-        sla_limite = datetime.now() + timedelta(days=1)
-
-        nova_ordem = OrdemServico(
-            tipo_ticket=form_data["tipo_ticket"],
-            tipo_contrato=form_data["tipo_contrato"],
-            locatario=form_data["locatario"],
-            moradores=form_data["moradores"],
-            empreendimento=form_data["empreendimento"],
-            unidade_metragem=form_data["unidade_metragem"],
-            data_entrada=None,
-            data_saida=None,
-            valor_locacao=valor_locacao,
-            responsavel=form_data["responsavel"],
-            solicitante=user_name,
+        db = SessionLocal()
+        nova_os = OrdemServico(
+            tipo_ticket=data["tipo_ticket"],
+            tipo_contrato=data["tipo_contrato"],
+            locatario=data["locatario"],
+            moradores=data["moradores"],
+            empreendimento=data["empreendimento"],
+            unidade_metragem=data["unidade_metragem"],
+            data_entrada=datetime.strptime(data["data_entrada"], "%Y-%m-%d") if data["data_entrada"] else None,
+            data_saida=datetime.strptime(data["data_saida"], "%Y-%m-%d") if data["data_saida"] else None,
+            valor_locacao=float(data["valor_locacao"].replace(".", "").replace(",", ".")),
+            responsavel=data["responsavel"],
+            solicitante=body["user"]["username"],
             status="aberto",
             data_abertura=datetime.now(),
-            sla_limite=sla_limite,
+            sla_limite=datetime.now() + timedelta(days=1),
             sla_status="dentro do prazo"
         )
-
-        db = SessionLocal()
-        db.add(nova_ordem)
+        db.add(nova_os)
         db.commit()
-        db.refresh(nova_ordem)
+        db.refresh(nova_os)
         db.close()
-
         print("✅ Chamado salvo com sucesso!")
-
     except Exception as e:
         print("❌ Erro ao salvar no banco:", e)
 
