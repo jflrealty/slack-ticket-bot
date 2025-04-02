@@ -65,7 +65,7 @@ def open_modal(ack, body, client):
                         "placeholder": {"type": "plain_text", "text": "Escolha"},
                         "options": [
                             {"text": {"type": "plain_text", "text": opt}, "value": opt}
-                            for opt in ["Lista de Espera", "Ordem de Serviço"]
+                            for opt in ["Lista de Espera", "Pré bloqueio", "Prorrogação", "Aditivo"]
                         ],
                     },
                     "label": {"type": "plain_text", "text": "Tipo de Ticket"}
@@ -79,7 +79,7 @@ def open_modal(ack, body, client):
                         "placeholder": {"type": "plain_text", "text": "Escolha"},
                         "options": [
                             {"text": {"type": "plain_text", "text": opt}, "value": opt}
-                            for opt in ["Short Stay", "Temporada", "Residencial"]
+                            for opt in ["Short Stay", "Temporada", "Long Stay", "Comodato"]
                         ],
                     },
                     "label": {"type": "plain_text", "text": "Tipo de Contrato"}
