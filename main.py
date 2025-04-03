@@ -105,7 +105,7 @@ def open_modal(ack, body, client):
                         "placeholder": {"type": "plain_text", "text": "Escolha"},
                         "options": [
                             {"text": {"type": "plain_text", "text": opt}, "value": opt}
-                            for opt in ["JFL125", "JML747", "JBR099"]
+                            for opt in ["JFL125", "JML747", "VO699", "VHOUSE", "AVNU"]
                         ]
                     },
                     "label": {"type": "plain_text", "text": "Empreendimento"}
