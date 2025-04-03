@@ -138,9 +138,18 @@ def open_modal(ack, body, client):
                     "type": "input",
                     "block_id": "responsavel",
                     "element": {
-                        "type": "users_select",
+                        "type": "static_select",
                         "action_id": "value",
-                        "placeholder": {"type": "plain_text", "text": "Escolha uma pessoa"}
+                        "placeholder": {"type": "plain_text", "text": "Escolha um responsável"},
+                        "options": [
+                            {"text": {"type": "plain_text", "text": "Rigol"}, "value": "U06TZRECVC4"},
+                            {"text": {"type": "plain_text", "text": "Marcela"}, "value": "U06U3RC11G9"},
+                            {"text": {"type": "plain_text", "text": "Victor"}, "value": "U07B2130TKQ"},
+                            {"text": {"type": "plain_text", "text": "Gabriel"}, "value": "U06TNKNRZHT"},
+                            {"text": {"type": "plain_text", "text": "Douglas"}, "value": "U08ANPS7V7Y"},
+                            {"text": {"type": "plain_text", "text": "Luciana"}, "value": "U06TAJU7C95"},
+                            {"text": {"type": "plain_text", "text": "Caroline"}, "value": "U08DRE18RR7"}
+                        ]
                     },
                     "label": {"type": "plain_text", "text": "Responsável"}
                 }
