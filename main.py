@@ -295,3 +295,5 @@ def meus_chamados(ack, body, client):
         user=user_id,
         text=texto
     )
+if __name__ == "__main__":
+    SocketModeHandler(app, os.getenv("SLACK_APP_TOKEN")).start()
