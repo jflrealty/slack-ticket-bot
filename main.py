@@ -64,10 +64,8 @@ def open_modal(ack, body, client):
                         "type": "static_select",
                         "action_id": "value",
                         "placeholder": {"type": "plain_text", "text": "Escolha"},
-                        "options": [
-                            {"text": {"type": "plain_text", "text": opt}, "value": opt}
-                            for opt in ["Lista de Espera", "Pré bloqueio", "Prorrogação", "Aditivo"]
-                        ],
+                        "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
+                                    for opt in ["Lista de Espera", "Pré bloqueio", "Prorrogação", "Aditivo"]],
                     },
                     "label": {"type": "plain_text", "text": "Tipo de Ticket"}
                 },
@@ -78,10 +76,8 @@ def open_modal(ack, body, client):
                         "type": "static_select",
                         "action_id": "value",
                         "placeholder": {"type": "plain_text", "text": "Escolha"},
-                        "options": [
-                            {"text": {"type": "plain_text", "text": opt}, "value": opt}
-                            for opt in ["Short Stay", "Temporada", "Long Stay", "Comodato"]
-                        ],
+                        "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
+                                    for opt in ["Short Stay", "Temporada", "Long Stay", "Comodato"]],
                     },
                     "label": {"type": "plain_text", "text": "Tipo de Contrato"}
                 },
@@ -104,10 +100,8 @@ def open_modal(ack, body, client):
                         "type": "static_select",
                         "action_id": "value",
                         "placeholder": {"type": "plain_text", "text": "Escolha"},
-                        "options": [
-                            {"text": {"type": "plain_text", "text": opt}, "value": opt}
-                            for opt in ["JFL125", "JML747", "VO699", "VHOUSE", "AVNU"]
-                        ]
+                        "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
+                                    for opt in ["JFL125", "JML747", "VO699", "VHOUSE", "AVNU"]]
                     },
                     "label": {"type": "plain_text", "text": "Empreendimento"}
                 },
@@ -159,7 +153,7 @@ def open_modal(ack, body, client):
     )
 
 @app.view("chamado_modal")
-def handle_submission(ack, body, view):
+def handle_submission(ack, body, view, client):
     ack()
     data = {}
     for block_id, block_data in view["state"]["values"].items():
@@ -190,29 +184,77 @@ def handle_submission(ack, body, view):
         db.refresh(nova_os)
         db.close()
 
-        client = WebClient(token=os.getenv("SLACK_BOT_TOKEN"))
         client.chat_postMessage(
             channel="#ticket",
-            text=f"""
-📥 *Novo Chamado Recebido*
-
-• *Tipo de Ticket:* {data['tipo_ticket']}
-• *Tipo de Contrato:* {data['tipo_contrato']}
-• *Locatário:* {data['locatario']}
-• *Moradores:* {data['moradores']}
-• *Empreendimento:* {data['empreendimento']}
-• *Unidade e Metragem:* {data['unidade_metragem']}
-• *Data de Entrada:* {data['data_entrada']}
-• *Data de Saída:* {data['data_saida']}
-• *Valor da Locação:* R$ {data['valor_locacao']}
-• *Responsável:* <@{data['responsavel']}>
-• *Solicitante:* <@{body['user']['id']}>
-"""
+            blocks=[
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"📥 *Novo Chamado Recebido*\n\n• *Tipo de Ticket:* {data['tipo_ticket']}\n• *Tipo de Contrato:* {data['tipo_contrato']}\n• *Locatário:* {data['locatario']}\n• *Moradores:* {data['moradores']}\n• *Empreendimento:* {data['empreendimento']}\n• *Unidade e Metragem:* {data['unidade_metragem']}\n• *Data de Entrada:* {data['data_entrada']}\n• *Data de Saída:* {data['data_saida']}\n• *Valor da Locação:* R$ {data['valor_locacao']}\n• *Responsável:* <@{data['responsavel']}>\n• *Solicitante:* <@{body['user']['id']}>"
+                    }
+                },
+                {
+                    "type": "actions",
+                    "elements": [
+                        {"type": "button", "text": {"type": "plain_text", "text": "🔄 Capturar"}, "value": str(nova_os.id), "action_id": "capturar_chamado"},
+                        {"type": "button", "text": {"type": "plain_text", "text": "✅ Finalizar"}, "value": str(nova_os.id), "action_id": "finalizar_chamado"},
+                        {"type": "button", "text": {"type": "plain_text", "text": "♻️ Reabrir"}, "value": str(nova_os.id), "action_id": "reabrir_chamado"}
+                    ]
+                }
+            ]
         )
 
-        print("✅ Chamado salvo e mensagem enviada!")
     except Exception as e:
         print("❌ Erro ao salvar no banco:", e)
+
+@app.action("capturar_chamado")
+def capturar_chamado(ack, body, client):
+    ack()
+    chamado_id = body["actions"][0]["value"]
+    user_id = body["user"]["id"]
+
+    db = SessionLocal()
+    os_obj = db.query(OrdemServico).filter(OrdemServico.id == chamado_id).first()
+    if os_obj:
+        os_obj.status = "em análise"
+        os_obj.data_captura = datetime.now()
+        os_obj.responsavel_id = user_id
+        db.commit()
+        client.chat_postMessage(channel="#ticket", text=f"🔄 Chamado ID {chamado_id} foi *capturado* por <@{user_id}>")
+    db.close()
+
+@app.action("finalizar_chamado")
+def finalizar_chamado(ack, body, client):
+    ack()
+    chamado_id = body["actions"][0]["value"]
+    user_id = body["user"]["id"]
+
+    db = SessionLocal()
+    os_obj = db.query(OrdemServico).filter(OrdemServico.id == chamado_id).first()
+    if os_obj:
+        os_obj.status = "fechado"
+        os_obj.data_fechamento = datetime.now()
+        db.commit()
+        client.chat_postMessage(channel="#ticket", text=f"✅ Chamado ID {chamado_id} foi *finalizado* por <@{user_id}>")
+    db.close()
+
+@app.action("reabrir_chamado")
+def reabrir_chamado(ack, body, client):
+    ack()
+    chamado_id = body["actions"][0]["value"]
+    user_id = body["user"]["id"]
+
+    db = SessionLocal()
+    os_obj = db.query(OrdemServico).filter(OrdemServico.id == chamado_id).first()
+    if os_obj:
+        os_obj.status = "aberto"
+        os_obj.data_fechamento = None
+        os_obj.data_captura = None
+        os_obj.responsavel_id = None
+        db.commit()
+        client.chat_postMessage(channel="#ticket", text=f"♻️ Chamado ID {chamado_id} foi *reaberto* por <@{user_id}>")
+    db.close()
 
 if __name__ == "__main__":
     SocketModeHandler(app, os.getenv("SLACK_APP_TOKEN")).start()
