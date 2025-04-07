@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from sqlalchemy import create_engine, text
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
-from slack_sdk import WebClient
 from models import OrdemServico, Base
 from database import SessionLocal, engine
 from dotenv import load_dotenv
@@ -255,6 +254,44 @@ def reabrir_chamado(ack, body, client):
         db.commit()
         client.chat_postMessage(channel="#ticket", text=f"♻️ Chamado ID {chamado_id} foi *reaberto* por <@{user_id}>")
     db.close()
+@app.command("/meus-chamados")
+def meus_chamados(ack, body, client):
+    ack()
+    user_id = body["user_id"]
+    user_name = body["user_name"]
 
-if __name__ == "__main__":
-    SocketModeHandler(app, os.getenv("SLACK_APP_TOKEN")).start()
+    db = SessionLocal()
+    chamados = db.query(OrdemServico).filter(
+        OrdemServico.solicitante == user_name
+    ).order_by(OrdemServico.status, OrdemServico.data_abertura.desc()).all()
+    db.close()
+
+    abertos = []
+    em_analise = []
+    fechados = []
+
+    for c in chamados:
+        linha = f"• ID {c.id} | {c.empreendimento} | {c.tipo_ticket} | Responsável: <@{c.responsavel}>"
+        if c.status == "aberto":
+            abertos.append(linha)
+        elif c.status == "em análise":
+            em_analise.append(linha)
+        elif c.status == "fechado":
+            fechados.append(linha)
+
+    texto = "📋 *Seus Chamados:*\n"
+    if em_analise:
+        texto += "\n*🟡 Em Análise:*\n" + "\n".join(em_analise)
+    if abertos:
+        texto += "\n\n*🟢 Abertos:*\n" + "\n".join(abertos)
+    if fechados:
+        texto += "\n\n*⚪️ Fechados:*\n" + "\n".join(fechados)
+
+    if not chamados:
+        texto = "✅ Você não possui chamados registrados."
+
+    client.chat_postEphemeral(
+        channel=body["channel_id"],
+        user=user_id,
+        text=texto
+    )
