@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import create_engine, text
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
+from slack_sdk import WebClient
 from models import OrdemServico, Base
 from database import SessionLocal, engine
 from dotenv import load_dotenv
@@ -188,7 +189,28 @@ def handle_submission(ack, body, view):
         db.commit()
         db.refresh(nova_os)
         db.close()
-        print("✅ Chamado salvo com sucesso!")
+
+        client = WebClient(token=os.getenv("SLACK_BOT_TOKEN"))
+        client.chat_postMessage(
+            channel="#ticket",
+            text=f"""
+📥 *Novo Chamado Recebido*
+
+• *Tipo de Ticket:* {data['tipo_ticket']}
+• *Tipo de Contrato:* {data['tipo_contrato']}
+• *Locatário:* {data['locatario']}
+• *Moradores:* {data['moradores']}
+• *Empreendimento:* {data['empreendimento']}
+• *Unidade e Metragem:* {data['unidade_metragem']}
+• *Data de Entrada:* {data['data_entrada']}
+• *Data de Saída:* {data['data_saida']}
+• *Valor da Locação:* R$ {data['valor_locacao']}
+• *Responsável:* <@{data['responsavel']}>
+• *Solicitante:* <@{body['user']['id']}>
+"""
+        )
+
+        print("✅ Chamado salvo e mensagem enviada!")
     except Exception as e:
         print("❌ Erro ao salvar no banco:", e)
 
