@@ -303,6 +303,35 @@ def handle_reabrir_submission(ack, body, view, client):
         client.chat_postMessage(channel="#ticket", text=f"♻️ Chamado ID {chamado_id} foi *reaberto* por <@{user_id}> com novo tipo: *{novo_tipo_ticket}*")
     db.close()
 
+@app.command("/exportar-chamado")
+def abrir_modal_exportacao(ack, body, client):
+    ack()
+    client.views_open(
+        trigger_id=body["trigger_id"],
+        view={
+            "type": "modal",
+            "callback_id": "escolher_exportacao",  # este id bate com o @app.view()
+            "title": {"type": "plain_text", "text": "Exportar Chamados"},
+            "submit": {"type": "plain_text", "text": "Exportar"},
+            "blocks": [
+                {
+                    "type": "input",
+                    "block_id": "tipo_arquivo",
+                    "label": {"type": "plain_text", "text": "Formato do Arquivo"},
+                    "element": {
+                        "type": "static_select",
+                        "action_id": "value",
+                        "placeholder": {"type": "plain_text", "text": "Escolha um formato"},
+                        "options": [
+                            {"text": {"type": "plain_text", "text": "PDF"}, "value": "pdf"},
+                            {"text": {"type": "plain_text", "text": "CSV"}, "value": "csv"}
+                        ]
+                    }
+                }
+            ]
+        }
+    )
+
 @app.command("/meus-chamados")
 def meus_chamados(ack, body, client):
     ack()
