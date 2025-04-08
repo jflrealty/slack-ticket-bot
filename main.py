@@ -274,7 +274,9 @@ def meus_chamados(ack, body, client):
     fechados = []
 
     for c in chamados:
-        linha = f"• ID {c.id} | {c.empreendimento} | {c.tipo_ticket} | Responsável: <@{c.responsavel}>"
+        prefixo = "🔴 " if c.sla_status == "fora do prazo" else "• "
+        linha = f"{prefixo}ID {c.id} | {c.empreendimento} | {c.tipo_ticket} | Responsável: <@{c.responsavel}>"
+
         if c.status == "aberto":
             abertos.append(linha)
         elif c.status == "em análise":
@@ -299,5 +301,37 @@ def meus_chamados(ack, body, client):
         text=texto
     )
 
+import threading
+import time
+
+def verificar_sla_vencido(client):
+    db = SessionLocal()
+    agora = datetime.now()
+    chamados = db.query(OrdemServico).filter(
+        OrdemServico.status != "fechado",
+        OrdemServico.sla_limite < agora,
+        OrdemServico.sla_status != "fora do prazo"
+    ).all()
+
+    for chamado in chamados:
+        chamado.sla_status = "fora do prazo"
+        db.commit()
+        client.chat_postMessage(
+            channel="#ticket",
+            text=f"⚠️ *SLA vencido!* O chamado *ID {chamado.id}* está atrasado!\nResponsável: <@{chamado.responsavel}>"
+        )
+
+    db.close()
+
+def iniciar_verificacao_sla(client):
+    def loop():
+        while True:
+            print("⏰ Verificando SLA vencido...")
+            verificar_sla_vencido(client)
+            time.sleep(60 * 60)  # a cada 60 minutos
+    threading.Thread(target=loop, daemon=True).start()
+
 if __name__ == "__main__":
+    iniciar_verificacao_sla(app.client)
     SocketModeHandler(app, os.getenv("SLACK_APP_TOKEN")).start()
+    
