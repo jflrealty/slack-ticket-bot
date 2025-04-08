@@ -449,76 +449,82 @@ def iniciar_verificacao_sla(client):
     threading.Thread(target=loop, daemon=True).start()
 
 from reportlab.lib.pagesizes import A4
+from reportlab.platypus import Table, TableStyle, Image, SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
-from reportlab.platypus import (
-    Table, TableStyle, Image, SimpleDocTemplate,
-    Paragraph, Spacer
-)
-from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
-import os
 import urllib.request
+import io
 
 def gerar_pdf_todos(chamados, timestamp):
     caminho = f"/tmp/chamados_{timestamp}.pdf"
-    doc = SimpleDocTemplate(caminho, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+    doc = SimpleDocTemplate(caminho, pagesize=A4)
     elementos = []
     estilos = getSampleStyleSheet()
 
-    # --- Baixa o logotipo da URL temporariamente ---
-    logotipo_url = "https://raw.githubusercontent.com/jflrealty/images/main/JFL_logotipo_completo.jpg"
-    logotipo_path = f"/tmp/logo_jfl.jpg"
+    # 🔗 Logo (proporção automática via URL)
+    logo_url = "https://raw.githubusercontent.com/jflrealty/images/main/JFL_logotipo_completo.jpg"
     try:
-        urllib.request.urlretrieve(logotipo_url, logotipo_path)
-        if os.path.exists(logotipo_path):
-            logo = Image(logotipo_path, width=150, height=50)
-            elementos.append(logo)
+        img_data = urllib.request.urlopen(logo_url).read()
+        img_io = io.BytesIO(img_data)
+        logo = Image(img_io)
+        logo._restrictSize(3*inch, 1*inch)
+        elementos.append(logo)
     except Exception as e:
-        print("❌ Erro ao carregar logotipo:", e)
+        print("❌ Erro ao carregar logo:", e)
 
-    # --- Data da exportação ---
-    data_exportacao = Paragraph(f"<b>Data da Exportação:</b> {timestamp}", estilos["Normal"])
-    elementos.append(data_exportacao)
+    # 📅 Data da exportação
+    data_exportacao = datetime.now().strftime("%d/%m/%Y")
+    elementos.append(Paragraph(f"<b>Data da Exportação:</b> {data_exportacao}", estilos["Normal"]))
     elementos.append(Spacer(1, 12))
 
-    # --- Título ---
-    titulo = Paragraph("<b>📋 Relatório de Chamados</b>", estilos["Title"])
-    elementos.append(titulo)
-    elementos.append(Spacer(1, 12))
+    # 🔄 Dicionário de nomes dos responsáveis
+    nomes_slack = {
+        "U06TZRECVC4": "Rigol",
+        "U06U3RC11G9": "Marcela",
+        "U07B2130TKQ": "Victor",
+        "U06TNKNRZHT": "Gabriel",
+        "U08ANPS7V7Y": "Douglas",
+        "U06TAJU7C95": "Luciana",
+        "U08DRE18RR7": "Caroline"
+    }
 
-    # --- Cabeçalhos da tabela ---
+    # 📄 Cabeçalhos e tabela
     dados = [[
-        "ID", "Empreendimento", "Tipo", "Locatário", "Responsável", "Status", "SLA", "Solicitante"
+        "ID", "Tipo", "Empreendimento", "Locatário", "Responsável", "Solicitante", "Status", "SLA"
     ]]
 
     for c in chamados:
-        bolinha = "🔴" if c.sla_status == "fora do prazo" else "🟢"
+        # 🟢 SLA como emoji
+        if c.sla_status == "fora do prazo":
+            sla_icon = "🔴"
+        else:
+            sla_icon = "🟢"
+
         dados.append([
-            str(c.id),
-            c.empreendimento,
+            c.id,
             c.tipo_ticket,
+            c.empreendimento,
             c.locatario,
-            f"<@{c.responsavel}>",
-            c.status.capitalize(),
-            bolinha,
-            c.solicitante
+            nomes_slack.get(c.responsavel, c.responsavel),
+            c.solicitante,
+            c.status,
+            sla_icon
         ])
 
-    # --- Monta a tabela com estilo ---
-    tabela = Table(dados, colWidths=[40, 90, 65, 80, 80, 60, 30, 80])
+    tabela = Table(dados, repeatRows=1, colWidths=[30, 60, 90, 90, 80, 80, 60, 30])
     tabela.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.lightgrey])
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#eeeeee")),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.black),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 10),
+        ('BOTTOMPADDING', (0,0), (-1,0), 10),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
 
     elementos.append(tabela)
-
     doc.build(elementos)
     return caminho
 
