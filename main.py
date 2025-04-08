@@ -284,6 +284,39 @@ def reabrir_chamado(ack, body, client):
         )
     db.close()
 
+@app.view("escolher_exportacao")
+def exportar_chamados_handler(ack, body, view, client):
+    ack()
+    tipo = view["state"]["values"]["tipo_arquivo"]["value"]["selected_option"]["value"]
+    user_id = body["user"]["id"]
+
+    db = SessionLocal()
+    chamados = db.query(OrdemServico).order_by(OrdemServico.id.desc()).all()
+    db.close()
+
+    if not chamados:
+        client.chat_postEphemeral(
+            channel=user_id,
+            user=user_id,
+            text="❌ Nenhum chamado encontrado para exportar."
+        )
+        return
+
+    agora = datetime.now().strftime("%Y%m%d%H%M%S")
+    if tipo == "pdf":
+        caminho = gerar_pdf_todos(chamados, agora)
+        titulo = f"Chamados_{agora}.pdf"
+    else:
+        caminho = gerar_csv_todos(chamados, agora)
+        titulo = f"Chamados_{agora}.csv"
+
+    client.files_upload(
+        channels=user_id,
+        file=caminho,
+        title=titulo,
+        initial_comment=f"📎 Aqui está seu arquivo *{titulo}* com todos os chamados."
+    )
+
 @app.view("reabrir_modal")
 def handle_reabrir_submission(ack, body, view, client):
     ack()
