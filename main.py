@@ -449,28 +449,77 @@ def iniciar_verificacao_sla(client):
     threading.Thread(target=loop, daemon=True).start()
 
 from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-import csv
+from reportlab.lib import colors
+from reportlab.platypus import (
+    Table, TableStyle, Image, SimpleDocTemplate,
+    Paragraph, Spacer
+)
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
+import os
+import urllib.request
 
 def gerar_pdf_todos(chamados, timestamp):
     caminho = f"/tmp/chamados_{timestamp}.pdf"
-    c = canvas.Canvas(caminho, pagesize=A4)
-    c.setFont("Helvetica", 12)
-    y = 800
+    doc = SimpleDocTemplate(caminho, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+    elementos = []
+    estilos = getSampleStyleSheet()
 
-    for chamado in chamados:
-        c.drawString(100, y, f"Chamado ID {chamado.id} | {chamado.tipo_ticket} | {chamado.empreendimento}")
-        y -= 20
-        c.drawString(100, y, f"Locatário: {chamado.locatario} | Responsável: {chamado.responsavel}")
-        y -= 20
-        c.drawString(100, y, f"Status: {chamado.status} | SLA: {chamado.sla_status}")
-        y -= 40
+    # --- Baixa o logotipo da URL temporariamente ---
+    logotipo_url = "https://raw.githubusercontent.com/jflrealty/images/main/JFL_logotipo_completo.jpg"
+    logotipo_path = f"/tmp/logo_jfl.jpg"
+    try:
+        urllib.request.urlretrieve(logotipo_url, logotipo_path)
+        if os.path.exists(logotipo_path):
+            logo = Image(logotipo_path, width=150, height=50)
+            elementos.append(logo)
+    except Exception as e:
+        print("❌ Erro ao carregar logotipo:", e)
 
-        if y < 100:
-            c.showPage()
-            y = 800
+    # --- Data da exportação ---
+    data_exportacao = Paragraph(f"<b>Data da Exportação:</b> {timestamp}", estilos["Normal"])
+    elementos.append(data_exportacao)
+    elementos.append(Spacer(1, 12))
 
-    c.save()
+    # --- Título ---
+    titulo = Paragraph("<b>📋 Relatório de Chamados</b>", estilos["Title"])
+    elementos.append(titulo)
+    elementos.append(Spacer(1, 12))
+
+    # --- Cabeçalhos da tabela ---
+    dados = [[
+        "ID", "Empreendimento", "Tipo", "Locatário", "Responsável", "Status", "SLA", "Solicitante"
+    ]]
+
+    for c in chamados:
+        bolinha = "🔴" if c.sla_status == "fora do prazo" else "🟢"
+        dados.append([
+            str(c.id),
+            c.empreendimento,
+            c.tipo_ticket,
+            c.locatario,
+            f"<@{c.responsavel}>",
+            c.status.capitalize(),
+            bolinha,
+            c.solicitante
+        ])
+
+    # --- Monta a tabela com estilo ---
+    tabela = Table(dados, colWidths=[40, 90, 65, 80, 80, 60, 30, 80])
+    tabela.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.lightgrey])
+    ]))
+
+    elementos.append(tabela)
+
+    doc.build(elementos)
     return caminho
 
 def gerar_csv_todos(chamados, timestamp):
