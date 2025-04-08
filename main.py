@@ -47,25 +47,28 @@ if DATABASE_URL:
 app = App(token=os.getenv("SLACK_BOT_TOKEN"))
 
 @app.command("/exportar-chamado")
-def abrir_modal_exportar(ack, body, client):
+def exportar_todos(ack, body, client):
     ack()
-    client.views_open(
-        trigger_id=body["trigger_id"],
-        view={
-            "type": "modal",
-            "callback_id": "exportar_modal",
-            "title": {"type": "plain_text", "text": "Exportar Chamado"},
-            "submit": {"type": "plain_text", "text": "Exportar"},
-            "blocks": [
-                {
-                    "type": "input",
-                    "block_id": "id_chamado",
-                    "element": {"type": "plain_text_input", "action_id": "value"},
-                    "label": {"type": "plain_text", "text": "Informe o ID do Chamado"}
-                }
-            ]
-        }
-    )
+    user_id = body["user_id"]
+
+    db = SessionLocal()
+    chamados = db.query(OrdemServico).order_by(OrdemServico.id).all()
+    db.close()
+
+    if chamados:
+        caminho_pdf = gerar_pdf_todos(chamados)
+        client.files_upload(
+            channels=user_id,
+            file=caminho_pdf,
+            title="Todos os Chamados",
+            initial_comment="📄 Aqui estão todos os chamados exportados!"
+        )
+    else:
+        client.chat_postEphemeral(
+            channel=body["channel_id"],
+            user=user_id,
+            text="⚠️ Nenhum chamado encontrado para exportar."
+        )
 
 @app.command("/chamado")
 def open_modal(ack, body, client):
@@ -425,21 +428,25 @@ if __name__ == "__main__":
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
-def gerar_pdf(chamado):
-    nome_arquivo = f"chamado_{chamado.id}.pdf"
-    caminho = f"/tmp/{nome_arquivo}"  # Railway aceita /tmp
+def gerar_pdf_todos(chamados):
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
 
+    nome_arquivo = "todos_chamados.pdf"
+    caminho = f"/tmp/{nome_arquivo}"
     c = canvas.Canvas(caminho, pagesize=A4)
-    c.setFont("Helvetica", 12)
-    y = 800
-    c.drawString(100, y, f"Ordem de Serviço - ID {chamado.id}")
-    y -= 30
+    c.setFont("Helvetica", 10)
+    y = 820
 
-    for campo, valor in vars(chamado).items():
-        if not campo.startswith("_sa_"):
-            c.drawString(100, y, f"{campo.replace('_', ' ').title()}: {valor}")
-            y -= 20
+    for chamado in chamados:
+        c.drawString(50, y, f"🆔 ID: {chamado.id} | {chamado.empreendimento} | {chamado.tipo_ticket} | Status: {chamado.status}")
+        y -= 15
+        c.drawString(60, y, f"Locatário: {chamado.locatario} | Responsável: {chamado.responsavel} | SLA: {chamado.sla_status}")
+        y -= 25
+        if y < 100:
+            c.showPage()
+            c.setFont("Helvetica", 10)
+            y = 820
 
     c.save()
     return caminho
-    
