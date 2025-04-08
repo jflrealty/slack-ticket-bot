@@ -159,7 +159,7 @@ def handle_submission(ack, body, view, client):
         action = list(block_data.values())[0]
         data[block_id] = action.get("selected_user") or action.get("selected_date") or action.get("selected_option", {}).get("value") or action.get("value")
 
-    try:
+        try:
         db = SessionLocal()
         nova_os = OrdemServico(
             tipo_ticket=data["tipo_ticket"],
@@ -183,28 +183,17 @@ def handle_submission(ack, body, view, client):
         db.refresh(nova_os)
         db.close()
 
-client.chat_postMessage(
-    channel="#ticket",
-    text="📥 Novo Chamado Recebido",
-    blocks=[
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f"📥 *Novo Chamado Recebido*\n\n• *Tipo de Ticket:* {data['tipo_ticket']}\n• *Tipo de Contrato:* {data['tipo_contrato']}\n• *Locatário:* {data['locatario']}\n• *Moradores:* {data['moradores']}\n• *Empreendimento:* {data['empreendimento']}\n• *Unidade e Metragem:* {data['unidade_metragem']}\n• *Data de Entrada:* {data['data_entrada']}\n• *Data de Saída:* {data['data_saida']}\n• *Valor da Locação:* R$ {data['valor_locacao']}\n• *Responsável:* <@{data['responsavel']}>\n• *Solicitante:* <@{body['user']['id']}>"
-            }
-        },
-        {
-            "type": "actions",
-            "elements": [
-                {"type": "button", "text": {"type": "plain_text", "text": "🔄 Capturar"}, "value": str(nova_os.id), "action_id": "capturar_chamado"},
-                {"type": "button", "text": {"type": "plain_text", "text": "✅ Finalizar"}, "value": str(nova_os.id), "action_id": "finalizar_chamado"},
-                {"type": "button", "text": {"type": "plain_text", "text": "♻️ Reabrir"}, "value": str(nova_os.id), "action_id": "reabrir_chamado"}
-            ]
-        }
-    ]
-)
-
+        client.chat_postMessage(
+            channel="#ticket",
+            text="📥 Novo Chamado Recebido",
+            blocks=[
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"📥 *Novo Chamado Recebido*\n\n• *Tipo de Ticket:* {data['tipo_ticket']}\n• *Tipo de Contrato:* {data['tipo_contrato']}\n• *Locatário:* {data['locatario']}\n• *Moradores:* {data['moradores']}\n• *Empreendimento:* {data['empreendimento']}\n• *Unidade e Metragem:* {data['unidade_metragem']}\n• *Data de Entrada:* {data['data_entrada']}\n• *Data de Saída:* {data['data_saida']}\n• *Valor da Locação:* R$ {data['valor_locacao']}\n• *Responsável:* <@{data['responsavel']}>\n• *Solicitante:* <@{body['user']['id']}>"
+                    }
+                },
                 {
                     "type": "actions",
                     "elements": [
@@ -218,7 +207,7 @@ client.chat_postMessage(
 
     except Exception as e:
         print("❌ Erro ao salvar no banco:", e)
-
+    
 @app.action("capturar_chamado")
 def capturar_chamado(ack, body, client):
     ack()
