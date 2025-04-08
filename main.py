@@ -113,13 +113,13 @@ def open_modal(ack, body, client):
                 {
                     "type": "input",
                     "block_id": "data_entrada",
-                    "element": {"type": "datepicker", "action_id": "value", "placeholder": {"type": "plain_text", "text": "Selecione a data"}},
+                    "element": {"type": "datepicker", "action_id": "value"},
                     "label": {"type": "plain_text", "text": "Data de Entrada"}
                 },
                 {
                     "type": "input",
                     "block_id": "data_saida",
-                    "element": {"type": "datepicker", "action_id": "value", "placeholder": {"type": "plain_text", "text": "Selecione a data"}},
+                    "element": {"type": "datepicker", "action_id": "value"},
                     "label": {"type": "plain_text", "text": "Data de Saída"}
                 },
                 {
@@ -159,7 +159,7 @@ def handle_submission(ack, body, view, client):
         action = list(block_data.values())[0]
         data[block_id] = action.get("selected_user") or action.get("selected_date") or action.get("selected_option", {}).get("value") or action.get("value")
 
-           try:
+    try:
         db = SessionLocal()
         nova_os = OrdemServico(
             tipo_ticket=data["tipo_ticket"],
@@ -192,11 +192,23 @@ def handle_submission(ack, body, view, client):
                     "text": {
                         "type": "mrkdwn",
                         "text": f"📥 *Novo Chamado Recebido*\n\n• *Tipo de Ticket:* {data['tipo_ticket']}\n• *Tipo de Contrato:* {data['tipo_contrato']}\n• *Locatário:* {data['locatario']}\n• *Moradores:* {data['moradores']}\n• *Empreendimento:* {data['empreendimento']}\n• *Unidade e Metragem:* {data['unidade_metragem']}\n• *Data de Entrada:* {data['data_entrada']}\n• *Data de Saída:* {data['data_saida']}\n• *Valor da Locação:* R$ {data['valor_locacao']}\n• *Responsável:* <@{data['responsavel']}>\n• *Solicitante:* <@{body['user']['id']}>"
-
+                    }
+                },
+                {
+                    "type": "actions",
+                    "elements": [
+                        {"type": "button", "text": {"type": "plain_text", "text": "🔄 Capturar"}, "value": str(nova_os.id), "action_id": "capturar_chamado"},
+                        {"type": "button", "text": {"type": "plain_text", "text": "✅ Finalizar"}, "value": str(nova_os.id), "action_id": "finalizar_chamado"},
+                        {"type": "button", "text": {"type": "plain_text", "text": "♻️ Reabrir"}, "value": str(nova_os.id), "action_id": "reabrir_chamado"}
+                    ]
+                }
+            ]
+        )
 
     except Exception as e:
         print("❌ Erro ao salvar no banco:", e)
-    
+
+
 @app.action("capturar_chamado")
 def capturar_chamado(ack, body, client):
     ack()
@@ -244,6 +256,7 @@ def reabrir_chamado(ack, body, client):
         db.commit()
         client.chat_postMessage(channel="#ticket", text=f"♻️ Chamado ID {chamado_id} foi *reaberto* por <@{user_id}>")
     db.close()
+
 @app.command("/meus-chamados")
 def meus_chamados(ack, body, client):
     ack()
@@ -285,5 +298,6 @@ def meus_chamados(ack, body, client):
         user=user_id,
         text=texto
     )
+
 if __name__ == "__main__":
     SocketModeHandler(app, os.getenv("SLACK_APP_TOKEN")).start()
