@@ -435,6 +435,49 @@ def iniciar_verificacao_sla(client):
             time.sleep(60 * 60)
     threading.Thread(target=loop, daemon=True).start()
 
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+import csv
+
+def gerar_pdf_todos(chamados, timestamp):
+    caminho = f"/tmp/chamados_{timestamp}.pdf"
+    c = canvas.Canvas(caminho, pagesize=A4)
+    c.setFont("Helvetica", 12)
+    y = 800
+
+    for chamado in chamados:
+        c.drawString(100, y, f"Chamado ID {chamado.id} | {chamado.tipo_ticket} | {chamado.empreendimento}")
+        y -= 20
+        c.drawString(100, y, f"Locatário: {chamado.locatario} | Responsável: {chamado.responsavel}")
+        y -= 20
+        c.drawString(100, y, f"Status: {chamado.status} | SLA: {chamado.sla_status}")
+        y -= 40
+
+        if y < 100:
+            c.showPage()
+            y = 800
+
+    c.save()
+    return caminho
+
+def gerar_csv_todos(chamados, timestamp):
+    caminho = f"/tmp/chamados_{timestamp}.csv"
+    with open(caminho, mode="w", newline="", encoding="utf-8") as arquivo_csv:
+        writer = csv.writer(arquivo_csv)
+        writer.writerow([
+            "ID", "Tipo Ticket", "Tipo Contrato", "Locatário", "Moradores", "Empreendimento",
+            "Unidade", "Data Entrada", "Data Saída", "Valor Locação", "Responsável",
+            "Solicitante", "Status", "Responsável ID", "Abertura", "Captura", "Fechamento", "SLA", "Status SLA"
+        ])
+        for c in chamados:
+            writer.writerow([
+                c.id, c.tipo_ticket, c.tipo_contrato, c.locatario, c.moradores, c.empreendimento,
+                c.unidade_metragem, c.data_entrada, c.data_saida, c.valor_locacao, c.responsavel,
+                c.solicitante, c.status, c.responsavel_id, c.data_abertura, c.data_captura,
+                c.data_fechamento, c.sla_limite, c.sla_status
+            ])
+    return caminho
+
 if __name__ == "__main__":
     iniciar_verificacao_sla(app.client)
     SocketModeHandler(app, os.getenv("SLACK_APP_TOKEN")).start()
