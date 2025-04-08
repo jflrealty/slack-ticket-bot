@@ -248,8 +248,10 @@ def reabrir_chamado(ack, body, client):
     db = SessionLocal()
     os_obj = db.query(OrdemServico).filter(OrdemServico.id == chamado_id).first()
 
+    TIPOS_TICKET = ["Reserva", "Lista de Espera", "Pré bloqueio", "Prorrogação", "Aditivo"]
+
     if os_obj:
-        # abre modal com campos readonly, exceto tipo_ticket
+        initial_opt = os_obj.tipo_ticket if os_obj.tipo_ticket in TIPOS_TICKET else TIPOS_TICKET[0]
         client.views_open(
             trigger_id=body["trigger_id"],
             view={
@@ -266,11 +268,10 @@ def reabrir_chamado(ack, body, client):
                         "element": {
                             "type": "static_select",
                             "action_id": "value",
-                            "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
-                                        for opt in ["Lista de Espera", "Pré bloqueio", "Prorrogação", "Aditivo"]],
+                            "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt} for opt in TIPOS_TICKET],
                             "initial_option": {
-                                "text": {"type": "plain_text", "text": os_obj.tipo_ticket},
-                                "value": os_obj.tipo_ticket
+                                "text": {"type": "plain_text", "text": initial_opt},
+                                "value": initial_opt
                             }
                         }
                     },
