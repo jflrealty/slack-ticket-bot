@@ -46,6 +46,27 @@ if DATABASE_URL:
 
 app = App(token=os.getenv("SLACK_BOT_TOKEN"))
 
+@app.command("/exportar-chamado")
+def abrir_modal_exportar(ack, body, client):
+    ack()
+    client.views_open(
+        trigger_id=body["trigger_id"],
+        view={
+            "type": "modal",
+            "callback_id": "exportar_modal",
+            "title": {"type": "plain_text", "text": "Exportar Chamado"},
+            "submit": {"type": "plain_text", "text": "Exportar"},
+            "blocks": [
+                {
+                    "type": "input",
+                    "block_id": "id_chamado",
+                    "element": {"type": "plain_text_input", "action_id": "value"},
+                    "label": {"type": "plain_text", "text": "Informe o ID do Chamado"}
+                }
+            ]
+        }
+    )
+
 @app.command("/chamado")
 def open_modal(ack, body, client):
     ack()
@@ -302,6 +323,31 @@ def handle_reabrir_submission(ack, body, view, client):
         client.chat_postMessage(channel="#ticket", text=f"♻️ Chamado ID {chamado_id} foi *reaberto* por <@{user_id}> com novo tipo: *{novo_tipo_ticket}*")
     db.close()
 
+@app.view("exportar_modal")
+def exportar_chamado(ack, body, view, client):
+    ack()
+    id_chamado = view["state"]["values"]["id_chamado"]["value"]["value"]
+
+    db = SessionLocal()
+    chamado = db.query(OrdemServico).filter(OrdemServico.id == id_chamado).first()
+    db.close()
+
+    if chamado:
+        caminho_pdf = gerar_pdf(chamado)
+
+        client.files_upload(
+            channels=body["user"]["id"],  # Envia direto pro usuário
+            file=caminho_pdf,
+            title=f"Chamado ID {chamado.id}",
+            initial_comment=f"📄 Aqui está o chamado exportado (ID {chamado.id})"
+        )
+    else:
+        client.chat_postEphemeral(
+            channel=body["user"]["id"],
+            user=body["user"]["id"],
+            text="❌ Chamado não encontrado. Verifique o ID e tente novamente."
+        )
+
 @app.command("/meus-chamados")
 def meus_chamados(ack, body, client):
     ack()
@@ -375,4 +421,25 @@ def iniciar_verificacao_sla(client):
 if __name__ == "__main__":
     iniciar_verificacao_sla(app.client)
     SocketModeHandler(app, os.getenv("SLACK_APP_TOKEN")).start()
+    
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+
+def gerar_pdf(chamado):
+    nome_arquivo = f"chamado_{chamado.id}.pdf"
+    caminho = f"/tmp/{nome_arquivo}"  # Railway aceita /tmp
+
+    c = canvas.Canvas(caminho, pagesize=A4)
+    c.setFont("Helvetica", 12)
+    y = 800
+    c.drawString(100, y, f"Ordem de Serviço - ID {chamado.id}")
+    y -= 30
+
+    for campo, valor in vars(chamado).items():
+        if not campo.startswith("_sa_"):
+            c.drawString(100, y, f"{campo.replace('_', ' ').title()}: {valor}")
+            y -= 20
+
+    c.save()
+    return caminho
     
