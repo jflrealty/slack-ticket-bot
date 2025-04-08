@@ -65,7 +65,7 @@ def open_modal(ack, body, client):
                         "action_id": "value",
                         "placeholder": {"type": "plain_text", "text": "Escolha"},
                         "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
-                                    for opt in ["Lista de Espera", "Pré bloqueio", "Prorrogação", "Aditivo"]],
+                                    for opt in ["Reserva", "Lista de Espera", "Pré bloqueio", "Prorrogação", "Aditivo"]],
                     },
                     "label": {"type": "plain_text", "text": "Tipo de Ticket"}
                 },
