@@ -205,8 +205,6 @@ client.chat_postMessage(
     ]
 )
 
-                    }
-                },
                 {
                     "type": "actions",
                     "elements": [
