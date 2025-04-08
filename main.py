@@ -528,6 +528,22 @@ def gerar_pdf_todos(chamados, timestamp):
     doc.build(elementos)
     return caminho
 
+import os
+import csv  # <-- Adiciona aqui
+from datetime import datetime, timedelta
+from sqlalchemy import create_engine, text
+
+# Mapeamento de IDs para nomes legíveis (atualize conforme necessário)
+USUARIOS_SLACK = {
+    "U06TZRECVC4": "Rigol",
+    "U06U3RC11G9": "Marcela",
+    "U07B2130TKQ": "Victor",
+    "U06TNKNRZHT": "Gabriel",
+    "U08ANPS7V7Y": "Douglas",
+    "U06TAJU7C95": "Luciana",
+    "U08DRE18RR7": "Caroline"
+}
+
 def gerar_csv_todos(chamados, timestamp):
     caminho = f"/tmp/chamados_{timestamp}.csv"
     with open(caminho, mode="w", newline="", encoding="utf-8") as arquivo_csv:
@@ -538,11 +554,29 @@ def gerar_csv_todos(chamados, timestamp):
             "Solicitante", "Status", "Responsável ID", "Abertura", "Captura", "Fechamento", "SLA", "Status SLA"
         ])
         for c in chamados:
+            responsavel_nome = USUARIOS_SLACK.get(c.responsavel, c.responsavel)
+            solicitante_nome = USUARIOS_SLACK.get(c.solicitante, c.solicitante)
+
             writer.writerow([
-                c.id, c.tipo_ticket, c.tipo_contrato, c.locatario, c.moradores, c.empreendimento,
-                c.unidade_metragem, c.data_entrada, c.data_saida, c.valor_locacao, c.responsavel,
-                c.solicitante, c.status, c.responsavel_id, c.data_abertura, c.data_captura,
-                c.data_fechamento, c.sla_limite, c.sla_status
+                c.id,
+                c.tipo_ticket,
+                c.tipo_contrato,
+                c.locatario,
+                c.moradores,
+                c.empreendimento,
+                c.unidade_metragem,
+                c.data_entrada.strftime("%d/%m/%Y") if c.data_entrada else "",
+                c.data_saida.strftime("%d/%m/%Y") if c.data_saida else "",
+                f"R$ {c.valor_locacao:,.2f}".replace(".", "#").replace(",", ".").replace("#", ","),
+                responsavel_nome,
+                solicitante_nome,
+                c.status,
+                c.responsavel_id,
+                c.data_abertura.strftime("%d/%m/%Y") if c.data_abertura else "",
+                c.data_captura.strftime("%d/%m/%Y") if c.data_captura else "",
+                c.data_fechamento.strftime("%d/%m/%Y") if c.data_fechamento else "",
+                c.sla_limite.strftime("%d/%m/%Y") if c.sla_limite else "",
+                "Dentro do Prazo" if c.sla_status == "dentro do prazo" else "Fora do Prazo"
             ])
     return caminho
 
