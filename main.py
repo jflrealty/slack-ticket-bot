@@ -310,12 +310,12 @@ def exportar_chamados_handler(ack, body, view, client):
         caminho = gerar_csv_todos(chamados, agora)
         titulo = f"Chamados_{agora}.csv"
 
-    client.files_upload(
-        channels=user_id,
-        file=caminho,
-        title=titulo,
-        initial_comment=f"📎 Aqui está seu arquivo *{titulo}* com todos os chamados."
-    )
+    client.files_upload_v2(
+    channel=user_id,
+    file=caminho,
+    title=titulo,
+    initial_comment=f"📎 Aqui está seu arquivo *{titulo}* com todos os chamados."
+)
 
 @app.view("reabrir_modal")
 def handle_reabrir_submission(ack, body, view, client):
