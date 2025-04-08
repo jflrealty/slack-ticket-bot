@@ -6,10 +6,11 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 from models import OrdemServico, Base
 from database import SessionLocal, engine
 from dotenv import load_dotenv
+import threading
+import time
 
 load_dotenv()
 
-# Cria a tabela se ainda não existir
 DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL:
     try:
@@ -208,7 +209,6 @@ def handle_submission(ack, body, view, client):
     except Exception as e:
         print("❌ Erro ao salvar no banco:", e)
 
-
 @app.action("capturar_chamado")
 def capturar_chamado(ack, body, client):
     ack()
@@ -244,17 +244,62 @@ def finalizar_chamado(ack, body, client):
 def reabrir_chamado(ack, body, client):
     ack()
     chamado_id = body["actions"][0]["value"]
+
+    db = SessionLocal()
+    os_obj = db.query(OrdemServico).filter(OrdemServico.id == chamado_id).first()
+
+    if os_obj:
+        # abre modal com campos readonly, exceto tipo_ticket
+        client.views_open(
+            trigger_id=body["trigger_id"],
+            view={
+                "type": "modal",
+                "callback_id": "reabrir_modal",
+                "title": {"type": "plain_text", "text": "Reabrir Chamado"},
+                "submit": {"type": "plain_text", "text": "Salvar"},
+                "private_metadata": str(chamado_id),
+                "blocks": [
+                    {
+                        "type": "input",
+                        "block_id": "tipo_ticket",
+                        "label": {"type": "plain_text", "text": "Tipo de Ticket"},
+                        "element": {
+                            "type": "static_select",
+                            "action_id": "value",
+                            "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
+                                        for opt in ["Lista de Espera", "Pré bloqueio", "Prorrogação", "Aditivo"]],
+                            "initial_option": {
+                                "text": {"type": "plain_text", "text": os_obj.tipo_ticket},
+                                "value": os_obj.tipo_ticket
+                            }
+                        }
+                    },
+                    {
+                        "type": "section",
+                        "text": {"type": "mrkdwn", "text": f"*Chamado ID:* {os_obj.id}\n*Empreendimento:* {os_obj.empreendimento}\n*Responsável:* <@{os_obj.responsavel}>"}
+                    }
+                ]
+            }
+        )
+    db.close()
+
+@app.view("reabrir_modal")
+def handle_reabrir_submission(ack, body, view, client):
+    ack()
+    chamado_id = int(view["private_metadata"])
+    novo_tipo_ticket = view["state"]["values"]["tipo_ticket"]["value"]["selected_option"]["value"]
     user_id = body["user"]["id"]
 
     db = SessionLocal()
     os_obj = db.query(OrdemServico).filter(OrdemServico.id == chamado_id).first()
     if os_obj:
+        os_obj.tipo_ticket = novo_tipo_ticket
         os_obj.status = "aberto"
-        os_obj.data_fechamento = None
         os_obj.data_captura = None
+        os_obj.data_fechamento = None
         os_obj.responsavel_id = None
         db.commit()
-        client.chat_postMessage(channel="#ticket", text=f"♻️ Chamado ID {chamado_id} foi *reaberto* por <@{user_id}>")
+        client.chat_postMessage(channel="#ticket", text=f"♻️ Chamado ID {chamado_id} foi *reaberto* por <@{user_id}> com novo tipo: *{novo_tipo_ticket}*")
     db.close()
 
 @app.command("/meus-chamados")
@@ -301,9 +346,6 @@ def meus_chamados(ack, body, client):
         text=texto
     )
 
-import threading
-import time
-
 def verificar_sla_vencido(client):
     db = SessionLocal()
     agora = datetime.now()
@@ -320,7 +362,6 @@ def verificar_sla_vencido(client):
             channel="#ticket",
             text=f"⚠️ *SLA vencido!* O chamado *ID {chamado.id}* está atrasado!\nResponsável: <@{chamado.responsavel}>"
         )
-
     db.close()
 
 def iniciar_verificacao_sla(client):
@@ -328,7 +369,7 @@ def iniciar_verificacao_sla(client):
         while True:
             print("⏰ Verificando SLA vencido...")
             verificar_sla_vencido(client)
-            time.sleep(60 * 60)  # a cada 60 minutos
+            time.sleep(60 * 60)
     threading.Thread(target=loop, daemon=True).start()
 
 if __name__ == "__main__":
