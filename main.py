@@ -310,12 +310,25 @@ def exportar_chamados_handler(ack, body, view, client):
         caminho = gerar_csv_todos(chamados, agora)
         titulo = f"Chamados_{agora}.csv"
 
-    client.files_upload_v2(
-    channel=user_id,
-    file=caminho,
-    title=titulo,
-    initial_comment=f"📎 Aqui está seu arquivo *{titulo}* com todos os chamados."
-)
+    try:
+        # 🔒 Abrir DM com o usuário
+        response = client.conversations_open(users=user_id)
+        channel_id = response["channel"]["id"]
+
+        # ✅ Enviar o arquivo na DM usando upload_v2 (mais estável)
+        client.files_upload_v2(
+            channel=channel_id,
+            file=caminho,
+            title=titulo,
+            initial_comment=f"📎 Aqui está seu arquivo *{titulo}* com todos os chamados."
+        )
+    except Exception as e:
+        print("❌ Erro ao enviar o arquivo:", e)
+        client.chat_postEphemeral(
+            channel=body["user"]["id"],
+            user=body["user"]["id"],
+            text="❌ Ocorreu um erro ao enviar o arquivo. Verifique os logs."
+        )
 
 @app.view("reabrir_modal")
 def handle_reabrir_submission(ack, body, view, client):
