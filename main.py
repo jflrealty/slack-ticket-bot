@@ -110,7 +110,42 @@ def handle_reabrir_chamado(ack, body, client):
 @app.command("/exportar-chamado")
 def handle_exportar_command(ack, body, client):
     ack()
-    services.enviar_relatorio(client, body["user_id"])
+    client.views_open(
+        trigger_id=body["trigger_id"],
+        view={
+            "type": "modal",
+            "callback_id": "escolher_exportacao",
+            "title": {"type": "plain_text", "text": "Exportar Chamados"},
+            "submit": {"type": "plain_text", "text": "Exportar"},
+            "blocks": [
+                {
+                    "type": "input",
+                    "block_id": "tipo_arquivo",
+                    "label": {"type": "plain_text", "text": "Formato do Arquivo"},
+                    "element": {
+                        "type": "static_select",
+                        "action_id": "value",
+                        "placeholder": {"type": "plain_text", "text": "Escolha um formato"},
+                        "options": [
+                            {"text": {"type": "plain_text", "text": "PDF"}, "value": "pdf"},
+                            {"text": {"type": "plain_text", "text": "CSV"}, "value": "csv"}
+                        ]
+                    }
+                }
+            ]
+        }
+    )
+
+@app.view("escolher_exportacao")
+def exportar_chamados_handler(ack, body, view, client):
+    ack()
+    tipo = view["state"]["values"]["tipo_arquivo"]["value"]["selected_option"]["value"]
+    user_id = body["user"]["id"]
+
+    if tipo == "pdf":
+        services.exportar_pdf(client, user_id)
+    else:
+        services.enviar_relatorio(client, user_id)
 
 # 📋 Comando de listar
 @app.command("/meus-chamados")
