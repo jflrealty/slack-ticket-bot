@@ -21,7 +21,7 @@ def montar_modal():
         "blocks": services.montar_blocos_modal()
     }
 
-# Função para notificar responsável
+# Função para notificar responsável via DM
 def notificar_responsavel(client, user_id, mensagem):
     try:
         response = client.conversations_open(users=user_id)
@@ -30,7 +30,7 @@ def notificar_responsavel(client, user_id, mensagem):
     except Exception as e:
         print(f"❌ Erro ao notificar responsável {user_id}: {e}")
 
-# Comando para abrir modal de chamado
+# Comando para abrir modal
 @app.command("/chamado")
 def handle_chamado_command(ack, body, client):
     ack()
@@ -39,12 +39,12 @@ def handle_chamado_command(ack, body, client):
         view=montar_modal()
     )
 
-# Ao enviar modal de abertura
+# Ao submeter o modal
 @app.view("modal_abertura_chamado")
 def handle_modal_submission(ack, body, view, client):
     ack()
     user = body["user"]["id"]
-    canal_destino = os.getenv("SLACK_CANAL_CHAMADOS", "#comercial")
+    canal_destino = os.getenv("SLACK_CANAL_CHAMADOS", "comercial")  # <- sem #
 
     data = {}
     for block_id, block_data in view["state"]["values"].items():
@@ -56,71 +56,72 @@ def handle_modal_submission(ack, body, view, client):
     data["data_saida"] = datetime.strptime(data["data_saida"], "%Y-%m-%d") if data.get("data_saida") else None
     data["valor_locacao"] = float(data["valor_locacao"].replace(".", "").replace(",", ".")) if data.get("valor_locacao") else None
 
-    # Mensagem principal no canal
+    # Enviar mensagem principal no canal
     response = client.chat_postMessage(
         channel=canal_destino,
         text=f"🆕 Novo chamado aberto por <@{user}>: *{data['tipo_ticket']}*",
     )
     thread_ts = response["ts"]
 
-    # Criar ordem de serviço no banco
+    # Salvar no banco com o thread_ts
     services.criar_ordem_servico(data, thread_ts)
 
-    # Detalhes do chamado na thread
+    # Responder com detalhes na thread
     client.chat_postMessage(
         channel=canal_destino,
         thread_ts=thread_ts,
         text=f"*Locatário:* {data['locatario']}\n*Moradores:* {data['moradores']}\n*Empreendimento:* {data['empreendimento']}\n*Unidade:* {data['unidade_metragem']}"
     )
 
-    # Reagir com dedinho na mensagem principal
-    client.reactions_add(
-        channel=canal_destino,
-        name="point_right",
-        timestamp=thread_ts
-    )
+    # Reagir com emoji na mensagem principal
+    try:
+        client.reactions_add(
+            channel=canal_destino,
+            name="point_right",
+            timestamp=thread_ts
+        )
+    except Exception as e:
+        print(f"❌ Erro ao adicionar reação: {e}")
 
     # Notificar responsável na DM
-    notificar_responsavel(client, data["responsavel"], f"📥 Você foi designado como responsável pelo novo chamado: *{data['tipo_ticket']}* no empreendimento *{data['empreendimento']}*.")
+    notificar_responsavel(
+        client,
+        data["responsavel"],
+        f"📥 Você foi designado como responsável pelo novo chamado: *{data['tipo_ticket']}* no empreendimento *{data['empreendimento']}*."
+    )
 
-# Ações de capturar, finalizar e reabrir chamados
+# Ações de captura/finalização/reabertura
 @app.action("capturar_chamado")
 def handle_capturar_chamado(ack, body, client):
     ack()
     user_id = body["user"]["id"]
     chamado_id = body["actions"][0]["value"]
-
-    notificar_responsavel(client, user_id, f"🔄 Você capturou o chamado *ID {chamado_id}*. Agora está sob sua responsabilidade!")
+    notificar_responsavel(client, user_id, f"🔄 Você capturou o chamado *ID {chamado_id}*.")
 
 @app.action("finalizar_chamado")
 def handle_finalizar_chamado(ack, body, client):
     ack()
     user_id = body["user"]["id"]
     chamado_id = body["actions"][0]["value"]
-
-    notificar_responsavel(client, user_id, f"✅ Você finalizou o chamado *ID {chamado_id}*. Obrigado pelo atendimento!")
+    notificar_responsavel(client, user_id, f"✅ Você finalizou o chamado *ID {chamado_id}*. Valeu!")
 
 @app.action("reabrir_chamado")
 def handle_reabrir_chamado(ack, body, client):
     ack()
     user_id = body["user"]["id"]
     chamado_id = body["actions"][0]["value"]
+    notificar_responsavel(client, user_id, f"♻️ Você reabriu o chamado *ID {chamado_id}*.")
 
-    notificar_responsavel(client, user_id, f"♻️ Você reabriu o chamado *ID {chamado_id}*. Atualize as informações necessárias.")
-
-# Comando para exportar chamados
+# Desativadas por enquanto (a implementar)
 @app.command("/exportar-chamado")
 def handle_exportar_command(ack, body, client):
     ack()
-    user_id = body["user_id"]
-    services.enviar_relatorio(client, user_id)
+    # services.enviar_relatorio(client, body["user_id"])
 
-# Comando para listar meus chamados
 @app.command("/meus-chamados")
 def handle_meus_chamados(ack, body, client):
     ack()
-    user_id = body["user_id"]
-    services.exibir_lista(client, user_id)
+    # services.exibir_lista(client, body["user_id"])
 
 if __name__ == "__main__":
     SocketModeHandler(app, os.getenv("SLACK_APP_TOKEN")).start()
