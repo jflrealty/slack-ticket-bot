@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from models import OrdemServico
 from database import SessionLocal
 import csv
+import os  # <-- AQUI adiciona esta linha
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer, Image
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -294,6 +295,37 @@ def exibir_lista(client, user_id):
         texto += "\n⚪️ *Fechados:*\n" + "\n".join(fechados)
 
     client.chat_postEphemeral(channel=user_id, user=user_id, text=texto)
+
+def verificar_sla_vencido():
+    db = SessionLocal()
+    agora = datetime.now()
+    chamados = db.query(OrdemServico).filter(
+        OrdemServico.status.in_(["aberto", "em análise"]),
+        OrdemServico.sla_limite < agora,
+        OrdemServico.sla_status == "dentro do prazo"
+    ).all()
+
+    for chamado in chamados:
+        chamado.sla_status = "fora do prazo"
+        db.commit()
+
+    db.close()
+
+def lembrar_chamados_vencidos(client):
+    db = SessionLocal()
+    agora = datetime.now()
+    chamados = db.query(OrdemServico).filter(
+        OrdemServico.status.in_(["aberto", "em análise"]),
+        OrdemServico.sla_status == "fora do prazo"
+    ).all()
+
+    for chamado in chamados:
+        client.chat_postMessage(
+            channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
+            thread_ts=chamado.thread_ts,
+            text=f"🔔 *Lembrete:* <@{chamado.responsavel}> o chamado ID *{chamado.id}* ainda está vencido! 🚨"
+        )
+    db.close()
 
 # 📄 Formatar mensagem na thread
 def formatar_mensagem_chamado(data, user_id):
