@@ -290,3 +290,47 @@ def lembrar_chamados_vencidos(client):
             )
         except Exception as e:
             print(f"❌ Erro ao enviar lembrete: {e}")
+def exibir_lista(client, user_id):
+    db = SessionLocal()
+    chamados = db.query(OrdemServico).filter(
+        OrdemServico.solicitante == user_id
+    ).order_by(
+        OrdemServico.status,
+        OrdemServico.data_abertura.desc()
+    ).all()
+    db.close()
+
+    if not chamados:
+        client.chat_postEphemeral(
+            channel=user_id,
+            user=user_id,
+            text="✅ Você não possui chamados registrados."
+        )
+        return
+
+    abertos, em_analise, fechados = [], [], []
+
+    for c in chamados:
+        sla_emoji = "🔴" if c.sla_status == "fora do prazo" else "🟢"
+        responsavel_nome = get_nome_slack(c.responsavel)
+        linha = f"{sla_emoji} ID {c.id} | {c.empreendimento} | {c.tipo_ticket} | Resp: {responsavel_nome}"
+        if c.status == "aberto":
+            abertos.append(linha)
+        elif c.status == "em análise":
+            em_analise.append(linha)
+        elif c.status == "fechado":
+            fechados.append(linha)
+
+    texto = "📋 *Seus Chamados:*\n"
+    if em_analise:
+        texto += "\n🟡 *Em Análise:*\n" + "\n".join(em_analise)
+    if abertos:
+        texto += "\n🟢 *Abertos:*\n" + "\n".join(abertos)
+    if fechados:
+        texto += "\n⚪️ *Fechados:*\n" + "\n".join(fechados)
+
+    client.chat_postEphemeral(
+        channel=user_id,
+        user=user_id,
+        text=texto
+    )
