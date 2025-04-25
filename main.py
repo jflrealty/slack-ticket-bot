@@ -7,6 +7,10 @@ from dotenv import load_dotenv
 from datetime import datetime
 from database import SessionLocal
 from models import OrdemServico
+import threading
+import time
+from services import verificar_sla_vencido, lembrar_chamados_vencidos
+
 
 load_dotenv()
 
