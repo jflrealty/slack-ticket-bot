@@ -3,6 +3,10 @@ from sqlalchemy.orm import Session
 from models import OrdemServico
 from database import SessionLocal
 import csv
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
 
 # 🔧 Função para montar os blocos do modal
 def montar_blocos_modal():
@@ -51,7 +55,7 @@ def montar_blocos_modal():
                 "action_id": "value",
                 "placeholder": {"type": "plain_text", "text": "Escolha"},
                 "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
-                            for opt in ["JFL125", "JML747", "VO699", "VHOUSE", "AVNU"]]
+                            for opt in ["JFL125", "JML747", "VO699", "VHOUSE", "AVNU"]],
             },
             "label": {"type": "plain_text", "text": "Empreendimento"}
         },
@@ -103,10 +107,8 @@ def montar_blocos_modal():
 # 🧾 Criação da Ordem de Serviço
 def criar_ordem_servico(data, thread_ts=None):
     session = SessionLocal()
-    nova_os = None
     try:
         sla_prazo = datetime.utcnow() + timedelta(hours=24)
-
         nova_os = OrdemServico(
             tipo_ticket=data["tipo_ticket"],
             tipo_contrato=data["tipo_contrato"],
@@ -125,32 +127,24 @@ def criar_ordem_servico(data, thread_ts=None):
             sla_status="dentro do prazo",
             thread_ts=thread_ts
         )
-
         session.add(nova_os)
         session.commit()
         session.refresh(nova_os)
-
     except Exception as e:
         print("❌ Erro ao salvar no banco:", e)
         session.rollback()
-
     finally:
         session.close()
-
     return nova_os
 
-# 📤 Exporta CSV com todos os chamados e envia por DM
+# 📤 Exporta CSV
 def enviar_relatorio(client, user_id):
     db = SessionLocal()
     chamados = db.query(OrdemServico).order_by(OrdemServico.id.desc()).all()
     db.close()
 
     if not chamados:
-        client.chat_postEphemeral(
-            channel=user_id,
-            user=user_id,
-            text="❌ Nenhum chamado encontrado para exportar."
-        )
+        client.chat_postEphemeral(channel=user_id, user=user_id, text="❌ Nenhum chamado encontrado para exportar.")
         return
 
     agora = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -187,7 +181,67 @@ def enviar_relatorio(client, user_id):
         initial_comment="📎 Aqui está seu relatório de chamados."
     )
 
-# 📋 Lista os chamados do usuário no Slack
+# 📄 Exporta PDF
+def exportar_pdf(client, user_id):
+    db = SessionLocal()
+    chamados = db.query(OrdemServico).order_by(OrdemServico.id.desc()).all()
+    db.close()
+
+    if not chamados:
+        client.chat_postEphemeral(channel=user_id, user=user_id, text="❌ Nenhum chamado encontrado para exportar.")
+        return
+
+    agora = datetime.now().strftime("%Y%m%d%H%M%S")
+    caminho = f"/tmp/chamados_{agora}.pdf"
+    doc = SimpleDocTemplate(caminho, pagesize=A4)
+    estilos = getSampleStyleSheet()
+    elementos = []
+
+    elementos.append(Paragraph(f"📋 Relatório de Chamados - {agora}", estilos["Heading2"]))
+    elementos.append(Spacer(1, 12))
+
+    dados = [[
+        "ID", "Tipo", "Contrato", "Locatário", "Empreendimento", "Unidade",
+        "Valor", "Responsável", "Status", "SLA"
+    ]]
+
+    for c in chamados:
+        valor = f"R$ {c.valor_locacao:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if c.valor_locacao else ""
+        dados.append([
+            c.id,
+            c.tipo_ticket,
+            c.tipo_contrato,
+            c.locatario,
+            c.empreendimento,
+            c.unidade_metragem,
+            valor,
+            c.responsavel,
+            c.status,
+            "🔴" if c.sla_status == "fora do prazo" else "🟢"
+        ])
+
+    tabela = Table(dados, repeatRows=1)
+    tabela.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+    ]))
+
+    elementos.append(tabela)
+    doc.build(elementos)
+
+    response = client.conversations_open(users=user_id)
+    channel_id = response["channel"]["id"]
+
+    client.files_upload_v2(
+        channel=channel_id,
+        file=caminho,
+        title=f"Chamados_{agora}.pdf",
+        initial_comment="📎 Aqui está seu relatório em PDF."
+    )
+
+# 📋 Lista chamados do usuário
 def exibir_lista(client, user_id):
     db = SessionLocal()
     chamados = db.query(OrdemServico).filter(OrdemServico.solicitante == user_id).order_by(
@@ -195,11 +249,7 @@ def exibir_lista(client, user_id):
     db.close()
 
     if not chamados:
-        client.chat_postEphemeral(
-            channel=user_id,
-            user=user_id,
-            text="✅ Você não possui chamados registrados."
-        )
+        client.chat_postEphemeral(channel=user_id, user=user_id, text="✅ Você não possui chamados registrados.")
         return
 
     abertos, em_analise, fechados = [], [], []
@@ -221,12 +271,9 @@ def exibir_lista(client, user_id):
     if fechados:
         texto += "\n⚪️ *Fechados:*\n" + "\n".join(fechados)
 
-    client.chat_postEphemeral(
-        channel=user_id,
-        user=user_id,
-        text=texto
-    )
+    client.chat_postEphemeral(channel=user_id, user=user_id, text=texto)
 
+# 📝 Formatar mensagem do chamado
 def formatar_mensagem_chamado(data, user_id):
     valor_formatado = f"R$ {data['valor_locacao']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     return (
