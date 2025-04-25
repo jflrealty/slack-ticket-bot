@@ -363,3 +363,100 @@ def formatar_mensagem_chamado(data, user_id):
         f"• *Solicitante:* <@{user_id}>"
     )
 
+from database import SessionLocal
+from models import OrdemServico
+from datetime import datetime
+import os
+
+# 🔄 Capturar chamado
+def capturar_chamado(client, body):
+    ts = body["message"]["ts"]
+    user_id = body["user"]["id"]
+    db = SessionLocal()
+    chamado = db.query(OrdemServico).filter(OrdemServico.thread_ts == ts).first()
+    if chamado:
+        chamado.status = "em análise"
+        chamado.responsavel = user_id
+        chamado.data_captura = datetime.now()
+        db.commit()
+    db.close()
+
+    client.chat_postMessage(
+        channel=body["channel"]["id"],
+        thread_ts=ts,
+        text=f"🔄 Chamado capturado por <@{user_id}>!"
+    )
+
+# ✅ Finalizar chamado
+def finalizar_chamado(client, body):
+    ts = body["message"]["ts"]
+    user_id = body["user"]["id"]
+    db = SessionLocal()
+    chamado = db.query(OrdemServico).filter(OrdemServico.thread_ts == ts).first()
+    if chamado:
+        chamado.status = "fechado"
+        chamado.data_fechamento = datetime.now()
+        db.commit()
+    db.close()
+
+    client.chat_postMessage(
+        channel=body["channel"]["id"],
+        thread_ts=ts,
+        text=f"✅ Chamado finalizado por <@{user_id}>!"
+    )
+
+# ♻️ Abrir modal de reabertura
+def abrir_modal_reabertura(client, body):
+    ts = body["message"]["ts"]
+    client.views_open(
+        trigger_id=body["trigger_id"],
+        view={
+            "type": "modal",
+            "callback_id": "reabrir_chamado_modal",
+            "title": {"type": "plain_text", "text": "Reabrir Chamado"},
+            "submit": {"type": "plain_text", "text": "Salvar"},
+            "private_metadata": ts,
+            "blocks": [
+                {
+                    "type": "input",
+                    "block_id": "novo_tipo_ticket",
+                    "element": {
+                        "type": "static_select",
+                        "action_id": "value",
+                        "placeholder": {"type": "plain_text", "text": "Escolha o novo tipo de ticket"},
+                        "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
+                                    for opt in ["Reserva", "Lista de Espera", "Pré bloqueio", "Prorrogação", "Aditivo"]]
+                    },
+                    "label": {"type": "plain_text", "text": "Novo Tipo de Ticket"}
+                }
+            ]
+        }
+    )
+
+# ♻️ Reabrir chamado
+def reabrir_chamado(client, body, view):
+    novo_tipo = view["state"]["values"]["novo_tipo_ticket"]["value"]["selected_option"]["value"]
+    ts = view["private_metadata"]
+    user_id = body["user"]["id"]
+
+    db = SessionLocal()
+    chamado = db.query(OrdemServico).filter(OrdemServico.thread_ts == ts).first()
+    if chamado:
+        chamado.tipo_ticket = novo_tipo
+        chamado.status = "aberto"
+        chamado.data_captura = None
+        chamado.data_fechamento = None
+        chamado.responsavel = None
+
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        novo_historico = f"[{now}] <@{user_id}> reabriu para *{novo_tipo}*\n"
+        chamado.historico_reaberturas = (chamado.historico_reaberturas or "") + novo_historico
+
+        db.commit()
+    db.close()
+
+    client.chat_postMessage(
+        channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
+        thread_ts=ts,
+        text=f"♻️ Chamado reaberto por <@{user_id}>!\nNovo Tipo de Ticket: *{novo_tipo}*"
+    )
