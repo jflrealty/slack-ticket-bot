@@ -226,3 +226,20 @@ def exibir_lista(client, user_id):
         user=user_id,
         text=texto
     )
+
+def formatar_mensagem_chamado(data, user_id):
+    valor_formatado = f"R$ {data['valor_locacao']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return (
+        "📄 *Detalhes do Chamado:*\n"
+        f"• *Tipo de Ticket:* {data['tipo_ticket']}\n"
+        f"• *Tipo de Contrato:* {data['tipo_contrato']}\n"
+        f"• *Locatário:* {data['locatario']}\n"
+        f"• *Moradores:* {data['moradores']}\n"
+        f"• *Empreendimento:* {data['empreendimento']}\n"
+        f"• *Unidade e Metragem:* {data['unidade_metragem']}\n"
+        f"• *Data de Entrada:* {data['data_entrada'].strftime('%Y-%m-%d') if data['data_entrada'] else '–'}\n"
+        f"• *Data de Saída:* {data['data_saida'].strftime('%Y-%m-%d') if data['data_saida'] else '–'}\n"
+        f"• *Valor da Locação:* {valor_formatado}\n"
+        f"• *Responsável:* <@{data['responsavel']}>\n"
+        f"• *Solicitante:* <@{user_id}>"
+    )
