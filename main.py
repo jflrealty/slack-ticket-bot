@@ -83,6 +83,31 @@ def handle_modal_submission(ack, body, view, client):
     # Notificar responsável na DM
     notificar_responsavel(client, data["responsavel"], f"📥 Você foi designado como responsável pelo novo chamado: *{data['tipo_ticket']}* no empreendimento *{data['empreendimento']}*.")
 
+# Ações de capturar, finalizar e reabrir chamados
+@app.action("capturar_chamado")
+def handle_capturar_chamado(ack, body, client):
+    ack()
+    user_id = body["user"]["id"]
+    chamado_id = body["actions"][0]["value"]
+
+    notificar_responsavel(client, user_id, f"🔄 Você capturou o chamado *ID {chamado_id}*. Agora está sob sua responsabilidade!")
+
+@app.action("finalizar_chamado")
+def handle_finalizar_chamado(ack, body, client):
+    ack()
+    user_id = body["user"]["id"]
+    chamado_id = body["actions"][0]["value"]
+
+    notificar_responsavel(client, user_id, f"✅ Você finalizou o chamado *ID {chamado_id}*. Obrigado pelo atendimento!")
+
+@app.action("reabrir_chamado")
+def handle_reabrir_chamado(ack, body, client):
+    ack()
+    user_id = body["user"]["id"]
+    chamado_id = body["actions"][0]["value"]
+
+    notificar_responsavel(client, user_id, f"♻️ Você reabriu o chamado *ID {chamado_id}*. Atualize as informações necessárias.")
+
 # Comando para exportar chamados
 @app.command("/exportar-chamado")
 def handle_exportar_command(ack, body, client):
