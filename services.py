@@ -7,7 +7,7 @@ import os
 import io
 import urllib.request
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer, Image
-from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.pagesizes import landscape, A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
@@ -15,7 +15,7 @@ from slack_sdk import WebClient
 
 client_slack = WebClient(token=os.getenv("SLACK_BOT_TOKEN"))
 
-# 🧍 Buscar nome real no Slack
+# 🔥 Buscar nome do usuário no Slack
 def get_nome_slack(user_id):
     try:
         user_info = client_slack.users_info(user=user_id)
@@ -24,7 +24,7 @@ def get_nome_slack(user_id):
         print(f"❌ Erro ao buscar nome do usuário {user_id}: {e}")
         return user_id  # Se falhar, retorna o próprio ID
 
-# 🔧 Montar os blocos do modal
+# 🔧 Montar o modal
 def montar_blocos_modal():
     return [
         {
@@ -188,7 +188,7 @@ def enviar_relatorio(client, user_id):
                 c.historico_reaberturas or "–"
             ])
 
-    response = client.conversations_open(users=user_id)
+    response = client_slack.conversations_open(users=user_id)
     channel_id = response["channel"]["id"]
 
     client.files_upload_v2(
@@ -198,7 +198,7 @@ def enviar_relatorio(client, user_id):
         initial_comment="📎 Aqui está seu relatório de chamados."
     )
 
-# 📤 Exportar PDF
+# 📤 Exportar PDF (modo paisagem)
 def exportar_pdf(client, user_id):
     db = SessionLocal()
     chamados = db.query(OrdemServico).order_by(OrdemServico.id.desc()).all()
@@ -214,7 +214,6 @@ def exportar_pdf(client, user_id):
     estilos = getSampleStyleSheet()
     elementos = []
 
-    # Logo
     logo_url = "https://raw.githubusercontent.com/jflrealty/images/main/JFL_logotipo_completo.jpg"
     try:
         img_data = urllib.request.urlopen(logo_url).read()
@@ -250,7 +249,7 @@ def exportar_pdf(client, user_id):
             c.historico_reaberturas or "–"
         ])
 
-    tabela = Table(dados, repeatRows=1)
+    tabela = Table(dados, repeatRows=1, colWidths=[30]*11)
     tabela.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#e0e0e0")),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
@@ -266,7 +265,7 @@ def exportar_pdf(client, user_id):
     elementos.append(tabela)
     doc.build(elementos)
 
-    response = client.conversations_open(users=user_id)
+    response = client_slack.conversations_open(users=user_id)
     channel_id = response["channel"]["id"]
 
     client.files_upload_v2(
