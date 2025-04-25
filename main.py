@@ -190,6 +190,12 @@ def handle_reabrir_modal_submission(ack, body, view, client):
         chamado.data_captura = None
         chamado.data_fechamento = None
         chamado.responsavel_id = None
+
+        # Adiciona ao histórico
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        novo_historico = f"[{now}] <@{user_id}> reabriu para *{novo_tipo}*\n"
+        chamado.historico_reaberturas = (chamado.historico_reaberturas or "") + novo_historico
+
         db.commit()
     db.close()
 
