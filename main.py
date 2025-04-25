@@ -250,7 +250,64 @@ def exportar_chamados_handler(ack, body, view, client):
 @app.command("/meus-chamados")
 def handle_meus_chamados(ack, body, client):
     ack()
-    services.exibir_lista(client, body["user_id"])
+    user_id = body["user_id"]
+
+    db = SessionLocal()
+    chamados = db.query(OrdemServico).filter(
+        OrdemServico.solicitante == user_id
+    ).order_by(OrdemServico.status, OrdemServico.data_abertura.desc()).all()
+    db.close()
+
+    if not chamados:
+        client.chat_postEphemeral(channel=user_id, user=user_id, text="✅ Você não possui chamados registrados.")
+        return
+
+    abertos, em_analise, fechados = [], [], []
+
+    for c in chamados:
+        sla_emoji = "🔴" if c.sla_status == "fora do prazo" else "🟢"
+        linha = f"{sla_emoji} ID {c.id} | {c.empreendimento} | {c.tipo_ticket} | Resp: <@{c.responsavel}>"
+        if c.status == "aberto":
+            abertos.append(linha)
+        elif c.status == "em análise":
+            em_analise.append(linha)
+        elif c.status == "fechado":
+            fechados.append(linha)
+
+    texto = "📋 *Seus Chamados:*\n"
+    if em_analise:
+        texto += "\n🟡 *Em Análise:*\n" + "\n".join(em_analise)
+    if abertos:
+        texto += "\n🟢 *Abertos:*\n" + "\n".join(abertos)
+    if fechados:
+        texto += "\n⚪️ *Fechados:*\n" + "\n".join(fechados)
+
+    client.chat_postEphemeral(channel=user_id, user=user_id, text=texto)
+
+def iniciar_verificacao_sla():
+    def loop():
+        while True:
+            print("⏰ Verificando SLA vencido...")
+            verificar_sla_vencido()
+            lembrar_chamados_vencidos()
+            time.sleep(3600)  # 60 minutos
+    threading.Thread(target=loop, daemon=True).start()
+
+def lembrar_chamados_vencidos():
+    db = SessionLocal()
+    agora = datetime.now()
+    chamados = db.query(OrdemServico).filter(
+        OrdemServico.status.in_(["aberto", "em análise"]),
+        OrdemServico.sla_status == "fora do prazo"
+    ).all()
+
+    for chamado in chamados:
+        client.chat_postMessage(
+            channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
+            thread_ts=chamado.thread_ts,
+            text=f"🔔 *Lembrete:* <@{chamado.responsavel}> o chamado ID *{chamado.id}* ainda está vencido! 🚨"
+        )
+    db.close()
 
 if __name__ == "__main__":
     SocketModeHandler(app, os.getenv("SLACK_APP_TOKEN")).start()
