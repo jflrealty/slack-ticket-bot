@@ -3,12 +3,15 @@ from sqlalchemy.orm import Session
 from models import OrdemServico
 from database import SessionLocal
 import csv
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer, Image
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
+import io
+import urllib.request
 
-# 🔧 Função para montar os blocos do modal
+# 🔧 Função para montar o modal
 def montar_blocos_modal():
     return [
         {
@@ -104,7 +107,7 @@ def montar_blocos_modal():
         }
     ]
 
-# 🧾 Criação da Ordem de Serviço
+# 🧾 Criar novo chamado
 def criar_ordem_servico(data, thread_ts=None):
     session = SessionLocal()
     try:
@@ -137,7 +140,7 @@ def criar_ordem_servico(data, thread_ts=None):
         session.close()
     return nova_os
 
-# 📤 Exporta CSV
+# 📤 Exportar CSV
 def enviar_relatorio(client, user_id):
     db = SessionLocal()
     chamados = db.query(OrdemServico).order_by(OrdemServico.id.desc()).all()
@@ -154,7 +157,7 @@ def enviar_relatorio(client, user_id):
         writer = csv.writer(arquivo_csv)
         writer.writerow([
             "ID", "Tipo", "Contrato", "Locatário", "Empreendimento", "Unidade",
-            "Valor", "Responsável", "Solicitante", "Status", "SLA"
+            "Valor", "Responsável", "Solicitante", "Status", "SLA", "Histórico Reaberturas"
         ])
         for c in chamados:
             writer.writerow([
@@ -168,7 +171,8 @@ def enviar_relatorio(client, user_id):
                 c.responsavel,
                 c.solicitante,
                 c.status,
-                c.sla_status
+                c.sla_status,
+                c.historico_reaberturas or "–"
             ])
 
     response = client.conversations_open(users=user_id)
@@ -181,7 +185,7 @@ def enviar_relatorio(client, user_id):
         initial_comment="📎 Aqui está seu relatório de chamados."
     )
 
-# 📄 Exporta PDF
+# 📤 Exportar PDF com logo JFL e histórico
 def exportar_pdf(client, user_id):
     db = SessionLocal()
     chamados = db.query(OrdemServico).order_by(OrdemServico.id.desc()).all()
@@ -197,12 +201,23 @@ def exportar_pdf(client, user_id):
     estilos = getSampleStyleSheet()
     elementos = []
 
-    elementos.append(Paragraph(f"📋 Relatório de Chamados - {agora}", estilos["Heading2"]))
+    logo_url = "https://raw.githubusercontent.com/jflrealty/images/main/JFL_logotipo_completo.jpg"
+    try:
+        img_data = urllib.request.urlopen(logo_url).read()
+        img_io = io.BytesIO(img_data)
+        logo = Image(img_io)
+        logo._restrictSize(4*inch, 1*inch)
+        elementos.append(logo)
+        elementos.append(Spacer(1, 12))
+    except Exception as e:
+        print("❌ Erro ao carregar logo:", e)
+
+    elementos.append(Paragraph(f"📋 Relatório de Chamados - {datetime.now().strftime('%d/%m/%Y')}", estilos["Heading2"]))
     elementos.append(Spacer(1, 12))
 
     dados = [[
         "ID", "Tipo", "Contrato", "Locatário", "Empreendimento", "Unidade",
-        "Valor", "Responsável", "Status", "SLA"
+        "Valor", "Responsável", "Status", "SLA", "Histórico"
     ]]
 
     for c in chamados:
@@ -217,15 +232,21 @@ def exportar_pdf(client, user_id):
             valor,
             c.responsavel,
             c.status,
-            "🔴" if c.sla_status == "fora do prazo" else "🟢"
+            "🔴" if c.sla_status == "fora do prazo" else "🟢",
+            c.historico_reaberturas or "–"
         ])
 
-    tabela = Table(dados, repeatRows=1)
+    tabela = Table(dados, repeatRows=1, colWidths=[25, 60, 60, 70, 70, 50, 50, 50, 50, 20, 100])
     tabela.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#e0e0e0")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.lightgrey]),
     ]))
 
     elementos.append(tabela)
@@ -237,11 +258,11 @@ def exportar_pdf(client, user_id):
     client.files_upload_v2(
         channel=channel_id,
         file=caminho,
-        title=f"Chamados_{agora}.pdf",
+        title=f"Relatório Chamados {agora}.pdf",
         initial_comment="📎 Aqui está seu relatório em PDF."
     )
 
-# 📋 Lista chamados do usuário
+# 📋 Exibir lista de chamados do usuário
 def exibir_lista(client, user_id):
     db = SessionLocal()
     chamados = db.query(OrdemServico).filter(OrdemServico.solicitante == user_id).order_by(
@@ -255,7 +276,8 @@ def exibir_lista(client, user_id):
     abertos, em_analise, fechados = [], [], []
 
     for c in chamados:
-        linha = f"• ID {c.id} | {c.empreendimento} | {c.tipo_ticket} | Resp: <@{c.responsavel}>"
+        sla_emoji = "🔴" if c.sla_status == "fora do prazo" else "🟢"
+        linha = f"{sla_emoji} ID {c.id} | {c.empreendimento} | {c.tipo_ticket} | Resp: <@{c.responsavel}>"
         if c.status == "aberto":
             abertos.append(linha)
         elif c.status == "em análise":
@@ -273,7 +295,7 @@ def exibir_lista(client, user_id):
 
     client.chat_postEphemeral(channel=user_id, user=user_id, text=texto)
 
-# 📝 Formatar mensagem do chamado
+# 📄 Formatar mensagem na thread
 def formatar_mensagem_chamado(data, user_id):
     valor_formatado = f"R$ {data['valor_locacao']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     return (
