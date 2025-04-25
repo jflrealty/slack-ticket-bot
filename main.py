@@ -185,7 +185,7 @@ def handle_submission(ack, body, view, client):
         db.close()
 
         client.chat_postMessage(
-            channel="#ticket",
+            channel="#comercial",
             text="📥 Novo Chamado Recebido",
             blocks=[
                 {
@@ -222,7 +222,7 @@ def capturar_chamado(ack, body, client):
         os_obj.data_captura = datetime.now()
         os_obj.responsavel_id = user_id
         db.commit()
-        client.chat_postMessage(channel="#ticket", text=f"🔄 Chamado ID {chamado_id} foi *capturado* por <@{user_id}>")
+        client.chat_postMessage(channel="#comercial", text=f"🔄 Chamado ID {chamado_id} foi *capturado* por <@{user_id}>")
     db.close()
 
 @app.action("finalizar_chamado")
@@ -237,7 +237,7 @@ def finalizar_chamado(ack, body, client):
         os_obj.status = "fechado"
         os_obj.data_fechamento = datetime.now()
         db.commit()
-        client.chat_postMessage(channel="#ticket", text=f"✅ Chamado ID {chamado_id} foi *finalizado* por <@{user_id}>")
+        client.chat_postMessage(channel="#comercial", text=f"✅ Chamado ID {chamado_id} foi *finalizado* por <@{user_id}>")
     db.close()
 
 @app.action("reabrir_chamado")
@@ -346,7 +346,7 @@ def handle_reabrir_submission(ack, body, view, client):
         os_obj.data_fechamento = None
         os_obj.responsavel_id = None
         db.commit()
-        client.chat_postMessage(channel="#ticket", text=f"♻️ Chamado ID {chamado_id} foi *reaberto* por <@{user_id}> com novo tipo: *{novo_tipo_ticket}*")
+        client.chat_postMessage(channel="#comercial", text=f"♻️ Chamado ID {chamado_id} foi *reaberto* por <@{user_id}> com novo tipo: *{novo_tipo_ticket}*")
     db.close()
 
 @app.command("/exportar-chamado")
@@ -435,7 +435,7 @@ def verificar_sla_vencido(client):
         chamado.sla_status = "fora do prazo"
         db.commit()
         client.chat_postMessage(
-            channel="#ticket",
+            channel="#comercial",
             text=f"⚠️ *SLA vencido!* O chamado *ID {chamado.id}* está atrasado!\nResponsável: <@{chamado.responsavel}>"
         )
     db.close()
