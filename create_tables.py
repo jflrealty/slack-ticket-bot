@@ -28,10 +28,11 @@ CREATE TABLE IF NOT EXISTS ordens_servico (
     data_captura TIMESTAMP,
     data_fechamento TIMESTAMP,
     sla_limite TIMESTAMP,
-    sla_status TEXT DEFAULT 'dentro do prazo'
+    sla_status TEXT DEFAULT 'dentro do prazo',
+    thread_ts TEXT  -- ✅ Campo novo adicionado aqui
 );
 """
 
 with engine.connect() as connection:
     connection.execute(text(query))
-    print("✅ Tabela 'ordens_servico' criada com sucesso.")
+    print("✅ Tabela 'ordens_servico' criada ou atualizada com sucesso.")
