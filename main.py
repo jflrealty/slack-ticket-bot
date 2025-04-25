@@ -11,13 +11,32 @@ load_dotenv()
 app = App(token=os.getenv("SLACK_BOT_TOKEN"))
 client = WebClient(token=os.getenv("SLACK_BOT_TOKEN"))
 
+# Função para montar o modal de abertura de chamado
+def montar_modal():
+    return {
+        "type": "modal",
+        "callback_id": "modal_abertura_chamado",
+        "title": {"type": "plain_text", "text": "Novo Chamado"},
+        "submit": {"type": "plain_text", "text": "Abrir"},
+        "blocks": services.montar_blocos_modal()
+    }
+
+# Função para notificar responsável
+def notificar_responsavel(client, user_id, mensagem):
+    try:
+        response = client.conversations_open(users=user_id)
+        channel_id = response["channel"]["id"]
+        client.chat_postMessage(channel=channel_id, text=mensagem)
+    except Exception as e:
+        print(f"❌ Erro ao notificar responsável {user_id}: {e}")
+
 # Comando para abrir modal de chamado
 @app.command("/chamado")
 def handle_chamado_command(ack, body, client):
     ack()
     client.views_open(
         trigger_id=body["trigger_id"],
-        view=services.montar_modal()
+        view=montar_modal()
     )
 
 # Ao enviar modal de abertura
@@ -60,6 +79,9 @@ def handle_modal_submission(ack, body, view, client):
         name="point_right",
         timestamp=thread_ts
     )
+
+    # Notificar responsável na DM
+    notificar_responsavel(client, data["responsavel"], f"📥 Você foi designado como responsável pelo novo chamado: *{data['tipo_ticket']}* no empreendimento *{data['empreendimento']}*.")
 
 # Comando para exportar chamados
 @app.command("/exportar-chamado")
