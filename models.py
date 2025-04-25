@@ -25,3 +25,4 @@ class OrdemServico(Base):
     data_fechamento = Column(TIMESTAMP)
     sla_limite = Column(TIMESTAMP)
     sla_status = Column(String, default="dentro do prazo")
+    thread_ts = Column(Text)  # ✅ ADICIONADO para salvar o TS da thread no Slack
