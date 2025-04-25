@@ -6,16 +6,17 @@ import csv
 import os
 import io
 import urllib.request
+
 from slack_sdk import WebClient
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer, Image
-from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.pagesizes import landscape, A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 
 client_slack = WebClient(token=os.getenv("SLACK_BOT_TOKEN"))
 
-# 🔧 Buscar nome do Slack
+# 🧠 Buscar nome real do usuário no Slack
 def get_nome_slack(user_id):
     try:
         user_info = client_slack.users_info(user=user_id)
@@ -24,7 +25,7 @@ def get_nome_slack(user_id):
         print(f"❌ Erro ao buscar nome do usuário {user_id}: {e}")
         return user_id
 
-# 🔧 Montar blocos do modal
+# 🔧 Função para montar o modal
 def montar_blocos_modal():
     return [
         {
@@ -145,13 +146,15 @@ def criar_ordem_servico(data, thread_ts=None):
         )
         session.add(nova_os)
         session.commit()
+        session.refresh(nova_os)
     except Exception as e:
-        print(f"❌ Erro ao criar ordem: {e}")
+        print("❌ Erro ao salvar no banco:", e)
         session.rollback()
     finally:
         session.close()
+    return nova_os
 
-# 📤 Exportar CSV
+# 📋 Exportar CSV
 def enviar_relatorio(client, user_id):
     db = SessionLocal()
     chamados = db.query(OrdemServico).order_by(OrdemServico.id.desc()).all()
@@ -164,9 +167,12 @@ def enviar_relatorio(client, user_id):
     agora = datetime.now().strftime("%Y%m%d%H%M%S")
     caminho = f"/tmp/chamados_{agora}.csv"
 
-    with open(caminho, "w", newline="", encoding="utf-8") as arquivo:
-        writer = csv.writer(arquivo)
-        writer.writerow(["ID", "Tipo", "Contrato", "Locatário", "Empreendimento", "Unidade", "Valor", "Responsável", "Solicitante", "Status", "SLA", "Histórico"])
+    with open(caminho, mode="w", newline="", encoding="utf-8") as arquivo_csv:
+        writer = csv.writer(arquivo_csv)
+        writer.writerow([
+            "ID", "Tipo", "Contrato", "Locatário", "Empreendimento", "Unidade",
+            "Valor", "Responsável", "Solicitante", "Status", "SLA", "Histórico Reaberturas"
+        ])
         for c in chamados:
             writer.writerow([
                 c.id,
@@ -184,14 +190,15 @@ def enviar_relatorio(client, user_id):
             ])
 
     response = client.conversations_open(users=user_id)
+    channel_id = response["channel"]["id"]
+
     client.files_upload_v2(
-        channel=response["channel"]["id"],
+        channel=channel_id,
         file=caminho,
         title=f"Relatório de Chamados - {agora}",
         initial_comment="📎 Aqui está seu relatório de chamados."
     )
-
-# 📤 Exportar PDF
+# 📤 Exportar PDF com logo JFL e histórico
 def exportar_pdf(client, user_id):
     db = SessionLocal()
     chamados = db.query(OrdemServico).order_by(OrdemServico.id.desc()).all()
@@ -203,25 +210,29 @@ def exportar_pdf(client, user_id):
 
     agora = datetime.now().strftime("%Y%m%d%H%M%S")
     caminho = f"/tmp/chamados_{agora}.pdf"
+
     doc = SimpleDocTemplate(caminho, pagesize=landscape(A4))
     estilos = getSampleStyleSheet()
     elementos = []
 
-    # Logo
+    logo_url = "https://raw.githubusercontent.com/jflrealty/images/main/JFL_logotipo_completo.jpg"
     try:
-        logo_data = urllib.request.urlopen("https://raw.githubusercontent.com/jflrealty/images/main/JFL_logotipo_completo.jpg").read()
-        img = Image(io.BytesIO(logo_data))
-        img._restrictSize(4*inch, 1*inch)
-        elementos.append(img)
+        img_data = urllib.request.urlopen(logo_url).read()
+        img_io = io.BytesIO(img_data)
+        logo = Image(img_io)
+        logo._restrictSize(5*inch, 1*inch)
+        elementos.append(logo)
         elementos.append(Spacer(1, 12))
     except Exception as e:
         print(f"❌ Erro ao carregar logo: {e}")
 
-    # Título
     elementos.append(Paragraph(f"📋 Relatório de Chamados - {datetime.now().strftime('%d/%m/%Y')}", estilos["Heading2"]))
     elementos.append(Spacer(1, 12))
 
-    dados = [["ID", "Tipo", "Contrato", "Locatário", "Empreendimento", "Unidade", "Valor", "Responsável", "Status", "SLA", "Histórico"]]
+    dados = [[
+        "ID", "Tipo", "Contrato", "Locatário", "Empreendimento", "Unidade",
+        "Valor", "Responsável", "Solicitante", "Status", "SLA", "Histórico"
+    ]]
 
     for c in chamados:
         valor = f"R$ {c.valor_locacao:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if c.valor_locacao else ""
@@ -234,86 +245,57 @@ def exportar_pdf(client, user_id):
             c.unidade_metragem,
             valor,
             get_nome_slack(c.responsavel),
+            get_nome_slack(c.solicitante),
             c.status,
             "🔴" if c.sla_status == "fora do prazo" else "🟢",
             c.historico_reaberturas or "–"
         ])
 
-    tabela = Table(dados, repeatRows=1, colWidths=[30, 50, 50, 60, 60, 50, 40, 50, 40, 20, 100])
+    tabela = Table(dados, repeatRows=1, colWidths=[
+        30, 70, 70, 80, 70, 60, 50, 70, 70, 50, 30, 130
+    ])
+
     tabela.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#e0e0e0")),
-        ('GRID', (0,0), (-1,-1), 0.25, colors.grey),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 10),
-        ('FONTSIZE', (0,1), (-1,-1), 8),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#e0e0e0")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.lightgrey]),
     ]))
+
     elementos.append(tabela)
     doc.build(elementos)
 
     response = client.conversations_open(users=user_id)
+    channel_id = response["channel"]["id"]
+
     client.files_upload_v2(
-        channel=response["channel"]["id"],
+        channel=channel_id,
         file=caminho,
         title=f"Relatório Chamados {agora}.pdf",
         initial_comment="📎 Aqui está seu relatório em PDF."
     )
 
-# 🔥 Verificar SLA vencido
-def verificar_sla_vencido():
-    db = SessionLocal()
-    agora = datetime.utcnow()
-    chamados = db.query(OrdemServico).filter(
-        OrdemServico.status.in_(["aberto", "em análise"]),
-        OrdemServico.sla_limite < agora,
-        OrdemServico.sla_status == "dentro do prazo"
-    ).all()
-    for chamado in chamados:
-        chamado.sla_status = "fora do prazo"
-    db.commit()
-    db.close()
-
-# 🔥 Lembrar chamados vencidos
-def lembrar_chamados_vencidos(client):
-    db = SessionLocal()
-    chamados = db.query(OrdemServico).filter(
-        OrdemServico.status.in_(["aberto", "em análise"]),
-        OrdemServico.sla_status == "fora do prazo"
-    ).all()
-    db.close()
-    for chamado in chamados:
-        try:
-            client.chat_postMessage(
-                channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
-                thread_ts=chamado.thread_ts,
-                text=f"🔔 *Lembrete:* <@{chamado.responsavel}> o chamado ID *{chamado.id}* ainda está vencido! 🚨"
-            )
-        except Exception as e:
-            print(f"❌ Erro ao enviar lembrete: {e}")
+# 📋 Exibir lista de chamados do usuário
 def exibir_lista(client, user_id):
     db = SessionLocal()
-    chamados = db.query(OrdemServico).filter(
-        OrdemServico.solicitante == user_id
-    ).order_by(
-        OrdemServico.status,
-        OrdemServico.data_abertura.desc()
-    ).all()
+    chamados = db.query(OrdemServico).filter(OrdemServico.solicitante == user_id).order_by(
+        OrdemServico.status, OrdemServico.data_abertura.desc()).all()
     db.close()
 
     if not chamados:
-        client.chat_postEphemeral(
-            channel=user_id,
-            user=user_id,
-            text="✅ Você não possui chamados registrados."
-        )
+        client.chat_postEphemeral(channel=user_id, user=user_id, text="✅ Você não possui chamados registrados.")
         return
 
     abertos, em_analise, fechados = [], [], []
 
     for c in chamados:
         sla_emoji = "🔴" if c.sla_status == "fora do prazo" else "🟢"
-        responsavel_nome = get_nome_slack(c.responsavel)
-        linha = f"{sla_emoji} ID {c.id} | {c.empreendimento} | {c.tipo_ticket} | Resp: {responsavel_nome}"
+        linha = f"{sla_emoji} ID {c.id} | {c.empreendimento} | {c.tipo_ticket} | Resp: <@{c.responsavel}>"
         if c.status == "aberto":
             abertos.append(linha)
         elif c.status == "em análise":
@@ -329,8 +311,55 @@ def exibir_lista(client, user_id):
     if fechados:
         texto += "\n⚪️ *Fechados:*\n" + "\n".join(fechados)
 
-    client.chat_postEphemeral(
-        channel=user_id,
-        user=user_id,
-        text=texto
+    client.chat_postEphemeral(channel=user_id, user=user_id, text=texto)
+
+# ⏰ Verificar chamados vencidos
+def verificar_sla_vencido():
+    db = SessionLocal()
+    agora = datetime.now()
+    chamados = db.query(OrdemServico).filter(
+        OrdemServico.status.in_(["aberto", "em análise"]),
+        OrdemServico.sla_limite < agora,
+        OrdemServico.sla_status == "dentro do prazo"
+    ).all()
+
+    for chamado in chamados:
+        chamado.sla_status = "fora do prazo"
+        db.commit()
+
+    db.close()
+
+# 🔔 Lembrar responsáveis sobre chamados vencidos
+def lembrar_chamados_vencidos(client):
+    db = SessionLocal()
+    chamados = db.query(OrdemServico).filter(
+        OrdemServico.status.in_(["aberto", "em análise"]),
+        OrdemServico.sla_status == "fora do prazo"
+    ).all()
+
+    for chamado in chamados:
+        client.chat_postMessage(
+            channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
+            thread_ts=chamado.thread_ts,
+            text=f"🔔 *Lembrete:* <@{chamado.responsavel}> o chamado ID *{chamado.id}* ainda está vencido! 🚨"
+        )
+    db.close()
+
+# 📄 Formatar mensagem bonitinha
+def formatar_mensagem_chamado(data, user_id):
+    valor_formatado = f"R$ {data['valor_locacao']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return (
+        "📄 *Detalhes do Chamado:*\n"
+        f"• *Tipo de Ticket:* {data['tipo_ticket']}\n"
+        f"• *Tipo de Contrato:* {data['tipo_contrato']}\n"
+        f"• *Locatário:* {data['locatario']}\n"
+        f"• *Moradores:* {data['moradores']}\n"
+        f"• *Empreendimento:* {data['empreendimento']}\n"
+        f"• *Unidade e Metragem:* {data['unidade_metragem']}\n"
+        f"• *Data de Entrada:* {data['data_entrada'].strftime('%Y-%m-%d') if data['data_entrada'] else '–'}\n"
+        f"• *Data de Saída:* {data['data_saida'].strftime('%Y-%m-%d') if data['data_saida'] else '–'}\n"
+        f"• *Valor da Locação:* {valor_formatado}\n"
+        f"• *Responsável:* <@{data['responsavel']}>\n"
+        f"• *Solicitante:* <@{user_id}>"
     )
+
