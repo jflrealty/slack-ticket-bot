@@ -3,16 +3,28 @@ from sqlalchemy.orm import Session
 from models import OrdemServico
 from database import SessionLocal
 import csv
-import os  # <-- AQUI adiciona esta linha
+import os
+import io
+import urllib.request
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer, Image
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
-import io
-import urllib.request
+from slack_sdk import WebClient
 
-# 🔧 Função para montar o modal
+client_slack = WebClient(token=os.getenv("SLACK_BOT_TOKEN"))
+
+# 🧍 Buscar nome real no Slack
+def get_nome_slack(user_id):
+    try:
+        user_info = client_slack.users_info(user=user_id)
+        return user_info["user"]["real_name"]
+    except Exception as e:
+        print(f"❌ Erro ao buscar nome do usuário {user_id}: {e}")
+        return user_id  # Se falhar, retorna o próprio ID
+
+# 🔧 Montar os blocos do modal
 def montar_blocos_modal():
     return [
         {
@@ -169,8 +181,8 @@ def enviar_relatorio(client, user_id):
                 c.empreendimento,
                 c.unidade_metragem,
                 f"R$ {c.valor_locacao:.2f}" if c.valor_locacao else "",
-                c.responsavel,
-                c.solicitante,
+                get_nome_slack(c.responsavel),
+                get_nome_slack(c.solicitante),
                 c.status,
                 c.sla_status,
                 c.historico_reaberturas or "–"
@@ -186,7 +198,7 @@ def enviar_relatorio(client, user_id):
         initial_comment="📎 Aqui está seu relatório de chamados."
     )
 
-# 📤 Exportar PDF com logo JFL e histórico
+# 📤 Exportar PDF
 def exportar_pdf(client, user_id):
     db = SessionLocal()
     chamados = db.query(OrdemServico).order_by(OrdemServico.id.desc()).all()
@@ -198,10 +210,11 @@ def exportar_pdf(client, user_id):
 
     agora = datetime.now().strftime("%Y%m%d%H%M%S")
     caminho = f"/tmp/chamados_{agora}.pdf"
-    doc = SimpleDocTemplate(caminho, pagesize=A4)
+    doc = SimpleDocTemplate(caminho, pagesize=landscape(A4))
     estilos = getSampleStyleSheet()
     elementos = []
 
+    # Logo
     logo_url = "https://raw.githubusercontent.com/jflrealty/images/main/JFL_logotipo_completo.jpg"
     try:
         img_data = urllib.request.urlopen(logo_url).read()
@@ -231,13 +244,13 @@ def exportar_pdf(client, user_id):
             c.empreendimento,
             c.unidade_metragem,
             valor,
-            c.responsavel,
+            get_nome_slack(c.responsavel),
             c.status,
             "🔴" if c.sla_status == "fora do prazo" else "🟢",
             c.historico_reaberturas or "–"
         ])
 
-    tabela = Table(dados, repeatRows=1, colWidths=[25, 60, 60, 70, 70, 50, 50, 50, 50, 20, 100])
+    tabela = Table(dados, repeatRows=1)
     tabela.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#e0e0e0")),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
@@ -261,86 +274,4 @@ def exportar_pdf(client, user_id):
         file=caminho,
         title=f"Relatório Chamados {agora}.pdf",
         initial_comment="📎 Aqui está seu relatório em PDF."
-    )
-
-# 📋 Exibir lista de chamados do usuário
-def exibir_lista(client, user_id):
-    db = SessionLocal()
-    chamados = db.query(OrdemServico).filter(OrdemServico.solicitante == user_id).order_by(
-        OrdemServico.status, OrdemServico.data_abertura.desc()).all()
-    db.close()
-
-    if not chamados:
-        client.chat_postEphemeral(channel=user_id, user=user_id, text="✅ Você não possui chamados registrados.")
-        return
-
-    abertos, em_analise, fechados = [], [], []
-
-    for c in chamados:
-        sla_emoji = "🔴" if c.sla_status == "fora do prazo" else "🟢"
-        linha = f"{sla_emoji} ID {c.id} | {c.empreendimento} | {c.tipo_ticket} | Resp: <@{c.responsavel}>"
-        if c.status == "aberto":
-            abertos.append(linha)
-        elif c.status == "em análise":
-            em_analise.append(linha)
-        elif c.status == "fechado":
-            fechados.append(linha)
-
-    texto = "📋 *Seus Chamados:*\n"
-    if em_analise:
-        texto += "\n🟡 *Em Análise:*\n" + "\n".join(em_analise)
-    if abertos:
-        texto += "\n🟢 *Abertos:*\n" + "\n".join(abertos)
-    if fechados:
-        texto += "\n⚪️ *Fechados:*\n" + "\n".join(fechados)
-
-    client.chat_postEphemeral(channel=user_id, user=user_id, text=texto)
-
-def verificar_sla_vencido():
-    db = SessionLocal()
-    agora = datetime.now()
-    chamados = db.query(OrdemServico).filter(
-        OrdemServico.status.in_(["aberto", "em análise"]),
-        OrdemServico.sla_limite < agora,
-        OrdemServico.sla_status == "dentro do prazo"
-    ).all()
-
-    for chamado in chamados:
-        chamado.sla_status = "fora do prazo"
-        db.commit()
-
-    db.close()
-
-def lembrar_chamados_vencidos(client):
-    db = SessionLocal()
-    agora = datetime.now()
-    chamados = db.query(OrdemServico).filter(
-        OrdemServico.status.in_(["aberto", "em análise"]),
-        OrdemServico.sla_status == "fora do prazo"
-    ).all()
-
-    for chamado in chamados:
-        client.chat_postMessage(
-            channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
-            thread_ts=chamado.thread_ts,
-            text=f"🔔 *Lembrete:* <@{chamado.responsavel}> o chamado ID *{chamado.id}* ainda está vencido! 🚨"
-        )
-    db.close()
-
-# 📄 Formatar mensagem na thread
-def formatar_mensagem_chamado(data, user_id):
-    valor_formatado = f"R$ {data['valor_locacao']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    return (
-        "📄 *Detalhes do Chamado:*\n"
-        f"• *Tipo de Ticket:* {data['tipo_ticket']}\n"
-        f"• *Tipo de Contrato:* {data['tipo_contrato']}\n"
-        f"• *Locatário:* {data['locatario']}\n"
-        f"• *Moradores:* {data['moradores']}\n"
-        f"• *Empreendimento:* {data['empreendimento']}\n"
-        f"• *Unidade e Metragem:* {data['unidade_metragem']}\n"
-        f"• *Data de Entrada:* {data['data_entrada'].strftime('%Y-%m-%d') if data['data_entrada'] else '–'}\n"
-        f"• *Data de Saída:* {data['data_saida'].strftime('%Y-%m-%d') if data['data_saida'] else '–'}\n"
-        f"• *Valor da Locação:* {valor_formatado}\n"
-        f"• *Responsável:* <@{data['responsavel']}>\n"
-        f"• *Solicitante:* <@{user_id}>"
     )
