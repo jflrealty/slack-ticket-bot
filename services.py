@@ -1,8 +1,10 @@
+from datetime import datetime, timedelta
+from sqlalchemy.orm import Session
 from models import OrdemServico
 from database import SessionLocal
-from datetime import datetime, timedelta
+import csv
 
-# 🔥 Monta os blocos do modal de abertura
+# 🔧 Função para montar os blocos do modal
 def montar_blocos_modal():
     return [
         {
@@ -98,13 +100,12 @@ def montar_blocos_modal():
         }
     ]
 
-# 🔥 Função para criar ordem de serviço no banco
+# 🧾 Criação da Ordem de Serviço
 def criar_ordem_servico(data, thread_ts=None):
     session = SessionLocal()
     nova_os = None
-
     try:
-        sla_prazo = datetime.utcnow() + timedelta(hours=24)  # SLA padrão 24h
+        sla_prazo = datetime.utcnow() + timedelta(hours=24)
 
         nova_os = OrdemServico(
             tipo_ticket=data["tipo_ticket"],
@@ -118,6 +119,7 @@ def criar_ordem_servico(data, thread_ts=None):
             valor_locacao=data["valor_locacao"],
             responsavel=data["responsavel"],
             solicitante=data["solicitante"],
+            status="aberto",
             data_abertura=datetime.utcnow(),
             sla_limite=sla_prazo,
             sla_status="dentro do prazo",
@@ -137,7 +139,90 @@ def criar_ordem_servico(data, thread_ts=None):
 
     return nova_os
 
-# (Futuro) 🔥 Aqui podemos adicionar:
-# def enviar_relatorio(...)
-# def exibir_lista(...)
-# def buscar_chamado_por_id(...)
+# 📤 Exporta CSV com todos os chamados e envia por DM
+def enviar_relatorio(client, user_id):
+    db = SessionLocal()
+    chamados = db.query(OrdemServico).order_by(OrdemServico.id.desc()).all()
+    db.close()
+
+    if not chamados:
+        client.chat_postEphemeral(
+            channel=user_id,
+            user=user_id,
+            text="❌ Nenhum chamado encontrado para exportar."
+        )
+        return
+
+    agora = datetime.now().strftime("%Y%m%d%H%M%S")
+    caminho = f"/tmp/chamados_{agora}.csv"
+
+    with open(caminho, mode="w", newline="", encoding="utf-8") as arquivo_csv:
+        writer = csv.writer(arquivo_csv)
+        writer.writerow([
+            "ID", "Tipo", "Contrato", "Locatário", "Empreendimento", "Unidade",
+            "Valor", "Responsável", "Solicitante", "Status", "SLA"
+        ])
+        for c in chamados:
+            writer.writerow([
+                c.id,
+                c.tipo_ticket,
+                c.tipo_contrato,
+                c.locatario,
+                c.empreendimento,
+                c.unidade_metragem,
+                f"R$ {c.valor_locacao:.2f}" if c.valor_locacao else "",
+                c.responsavel,
+                c.solicitante,
+                c.status,
+                c.sla_status
+            ])
+
+    response = client.conversations_open(users=user_id)
+    channel_id = response["channel"]["id"]
+
+    client.files_upload_v2(
+        channel=channel_id,
+        file=caminho,
+        title=f"Relatório de Chamados - {agora}",
+        initial_comment="📎 Aqui está seu relatório de chamados."
+    )
+
+# 📋 Lista os chamados do usuário no Slack
+def exibir_lista(client, user_id):
+    db = SessionLocal()
+    chamados = db.query(OrdemServico).filter(OrdemServico.solicitante == user_id).order_by(
+        OrdemServico.status, OrdemServico.data_abertura.desc()).all()
+    db.close()
+
+    if not chamados:
+        client.chat_postEphemeral(
+            channel=user_id,
+            user=user_id,
+            text="✅ Você não possui chamados registrados."
+        )
+        return
+
+    abertos, em_analise, fechados = [], [], []
+
+    for c in chamados:
+        linha = f"• ID {c.id} | {c.empreendimento} | {c.tipo_ticket} | Resp: <@{c.responsavel}>"
+        if c.status == "aberto":
+            abertos.append(linha)
+        elif c.status == "em análise":
+            em_analise.append(linha)
+        elif c.status == "fechado":
+            fechados.append(linha)
+
+    texto = "📋 *Seus Chamados:*\n"
+    if em_analise:
+        texto += "\n🟡 *Em Análise:*\n" + "\n".join(em_analise)
+    if abertos:
+        texto += "\n🟢 *Abertos:*\n" + "\n".join(abertos)
+    if fechados:
+        texto += "\n⚪️ *Fechados:*\n" + "\n".join(fechados)
+
+    client.chat_postEphemeral(
+        channel=user_id,
+        user=user_id,
+        text=texto
+    )
