@@ -6,25 +6,25 @@ import csv
 import os
 import io
 import urllib.request
+from slack_sdk import WebClient
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer, Image
-from reportlab.lib.pagesizes import landscape, A4
+from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
-from slack_sdk import WebClient
 
 client_slack = WebClient(token=os.getenv("SLACK_BOT_TOKEN"))
 
-# 🔥 Buscar nome do usuário no Slack
+# 🔧 Buscar nome do Slack
 def get_nome_slack(user_id):
     try:
         user_info = client_slack.users_info(user=user_id)
         return user_info["user"]["real_name"]
     except Exception as e:
         print(f"❌ Erro ao buscar nome do usuário {user_id}: {e}")
-        return user_id  # Se falhar, retorna o próprio ID
+        return user_id
 
-# 🔧 Montar o modal
+# 🔧 Montar blocos do modal
 def montar_blocos_modal():
     return [
         {
@@ -145,13 +145,11 @@ def criar_ordem_servico(data, thread_ts=None):
         )
         session.add(nova_os)
         session.commit()
-        session.refresh(nova_os)
     except Exception as e:
-        print("❌ Erro ao salvar no banco:", e)
+        print(f"❌ Erro ao criar ordem: {e}")
         session.rollback()
     finally:
         session.close()
-    return nova_os
 
 # 📤 Exportar CSV
 def enviar_relatorio(client, user_id):
@@ -166,12 +164,9 @@ def enviar_relatorio(client, user_id):
     agora = datetime.now().strftime("%Y%m%d%H%M%S")
     caminho = f"/tmp/chamados_{agora}.csv"
 
-    with open(caminho, mode="w", newline="", encoding="utf-8") as arquivo_csv:
-        writer = csv.writer(arquivo_csv)
-        writer.writerow([
-            "ID", "Tipo", "Contrato", "Locatário", "Empreendimento", "Unidade",
-            "Valor", "Responsável", "Solicitante", "Status", "SLA", "Histórico Reaberturas"
-        ])
+    with open(caminho, "w", newline="", encoding="utf-8") as arquivo:
+        writer = csv.writer(arquivo)
+        writer.writerow(["ID", "Tipo", "Contrato", "Locatário", "Empreendimento", "Unidade", "Valor", "Responsável", "Solicitante", "Status", "SLA", "Histórico"])
         for c in chamados:
             writer.writerow([
                 c.id,
@@ -188,17 +183,15 @@ def enviar_relatorio(client, user_id):
                 c.historico_reaberturas or "–"
             ])
 
-    response = client_slack.conversations_open(users=user_id)
-    channel_id = response["channel"]["id"]
-
+    response = client.conversations_open(users=user_id)
     client.files_upload_v2(
-        channel=channel_id,
+        channel=response["channel"]["id"],
         file=caminho,
         title=f"Relatório de Chamados - {agora}",
         initial_comment="📎 Aqui está seu relatório de chamados."
     )
 
-# 📤 Exportar PDF (modo paisagem)
+# 📤 Exportar PDF
 def exportar_pdf(client, user_id):
     db = SessionLocal()
     chamados = db.query(OrdemServico).order_by(OrdemServico.id.desc()).all()
@@ -214,24 +207,21 @@ def exportar_pdf(client, user_id):
     estilos = getSampleStyleSheet()
     elementos = []
 
-    logo_url = "https://raw.githubusercontent.com/jflrealty/images/main/JFL_logotipo_completo.jpg"
+    # Logo
     try:
-        img_data = urllib.request.urlopen(logo_url).read()
-        img_io = io.BytesIO(img_data)
-        logo = Image(img_io)
-        logo._restrictSize(4*inch, 1*inch)
-        elementos.append(logo)
+        logo_data = urllib.request.urlopen("https://raw.githubusercontent.com/jflrealty/images/main/JFL_logotipo_completo.jpg").read()
+        img = Image(io.BytesIO(logo_data))
+        img._restrictSize(4*inch, 1*inch)
+        elementos.append(img)
         elementos.append(Spacer(1, 12))
     except Exception as e:
-        print("❌ Erro ao carregar logo:", e)
+        print(f"❌ Erro ao carregar logo: {e}")
 
+    # Título
     elementos.append(Paragraph(f"📋 Relatório de Chamados - {datetime.now().strftime('%d/%m/%Y')}", estilos["Heading2"]))
     elementos.append(Spacer(1, 12))
 
-    dados = [[
-        "ID", "Tipo", "Contrato", "Locatário", "Empreendimento", "Unidade",
-        "Valor", "Responsável", "Status", "SLA", "Histórico"
-    ]]
+    dados = [["ID", "Tipo", "Contrato", "Locatário", "Empreendimento", "Unidade", "Valor", "Responsável", "Status", "SLA", "Histórico"]]
 
     for c in chamados:
         valor = f"R$ {c.valor_locacao:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if c.valor_locacao else ""
@@ -249,28 +239,54 @@ def exportar_pdf(client, user_id):
             c.historico_reaberturas or "–"
         ])
 
-    tabela = Table(dados, repeatRows=1, colWidths=[30]*11)
+    tabela = Table(dados, repeatRows=1, colWidths=[30, 50, 50, 60, 60, 50, 40, 50, 40, 20, 100])
     tabela.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#e0e0e0")),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 10),
-        ('FONTSIZE', (0, 1), (-1, -1), 9),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.lightgrey]),
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#e0e0e0")),
+        ('GRID', (0,0), (-1,-1), 0.25, colors.grey),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 10),
+        ('FONTSIZE', (0,1), (-1,-1), 8),
     ]))
-
     elementos.append(tabela)
     doc.build(elementos)
 
-    response = client_slack.conversations_open(users=user_id)
-    channel_id = response["channel"]["id"]
-
+    response = client.conversations_open(users=user_id)
     client.files_upload_v2(
-        channel=channel_id,
+        channel=response["channel"]["id"],
         file=caminho,
         title=f"Relatório Chamados {agora}.pdf",
         initial_comment="📎 Aqui está seu relatório em PDF."
     )
+
+# 🔥 Verificar SLA vencido
+def verificar_sla_vencido():
+    db = SessionLocal()
+    agora = datetime.utcnow()
+    chamados = db.query(OrdemServico).filter(
+        OrdemServico.status.in_(["aberto", "em análise"]),
+        OrdemServico.sla_limite < agora,
+        OrdemServico.sla_status == "dentro do prazo"
+    ).all()
+    for chamado in chamados:
+        chamado.sla_status = "fora do prazo"
+    db.commit()
+    db.close()
+
+# 🔥 Lembrar chamados vencidos
+def lembrar_chamados_vencidos(client):
+    db = SessionLocal()
+    chamados = db.query(OrdemServico).filter(
+        OrdemServico.status.in_(["aberto", "em análise"]),
+        OrdemServico.sla_status == "fora do prazo"
+    ).all()
+    db.close()
+    for chamado in chamados:
+        try:
+            client.chat_postMessage(
+                channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
+                thread_ts=chamado.thread_ts,
+                text=f"🔔 *Lembrete:* <@{chamado.responsavel}> o chamado ID *{chamado.id}* ainda está vencido! 🚨"
+            )
+        except Exception as e:
+            print(f"❌ Erro ao enviar lembrete: {e}")
