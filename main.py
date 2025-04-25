@@ -1,9 +1,10 @@
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_sdk import WebClient
-from services import abrir_chamado, exportar_chamados, listar_chamados
+import services
 import os
 from dotenv import load_dotenv
+from datetime import datetime
 
 load_dotenv()
 
@@ -16,7 +17,7 @@ def handle_chamado_command(ack, body, client):
     ack()
     client.views_open(
         trigger_id=body["trigger_id"],
-        view=abrir_chamado.montar_modal()
+        view=services.montar_modal()
     )
 
 # Ao enviar modal de abertura
@@ -26,22 +27,31 @@ def handle_modal_submission(ack, body, view, client):
     user = body["user"]["id"]
     canal_destino = os.getenv("SLACK_CANAL_CHAMADOS", "#comercial")
 
-    chamado = abrir_chamado.salvar_chamado(view, user)
-    titulo = chamado.titulo
-    descricao = chamado.descricao
+    data = {}
+    for block_id, block_data in view["state"]["values"].items():
+        action = list(block_data.values())[0]
+        data[block_id] = action.get("selected_user") or action.get("selected_date") or action.get("selected_option", {}).get("value") or action.get("value")
+
+    data["solicitante"] = user
+    data["data_entrada"] = datetime.strptime(data["data_entrada"], "%Y-%m-%d") if data.get("data_entrada") else None
+    data["data_saida"] = datetime.strptime(data["data_saida"], "%Y-%m-%d") if data.get("data_saida") else None
+    data["valor_locacao"] = float(data["valor_locacao"].replace(".", "").replace(",", ".")) if data.get("valor_locacao") else None
 
     # Mensagem principal no canal
     response = client.chat_postMessage(
         channel=canal_destino,
-        text=f"🆕 Novo chamado aberto por <@{user}>: *{titulo}*",
+        text=f"🆕 Novo chamado aberto por <@{user}>: *{data['tipo_ticket']}*",
     )
     thread_ts = response["ts"]
+
+    # Criar ordem de serviço no banco
+    services.criar_ordem_servico(data, thread_ts)
 
     # Detalhes do chamado na thread
     client.chat_postMessage(
         channel=canal_destino,
         thread_ts=thread_ts,
-        text=f"*Descrição:*\n{descricao}"
+        text=f"*Locatário:* {data['locatario']}\n*Moradores:* {data['moradores']}\n*Empreendimento:* {data['empreendimento']}\n*Unidade:* {data['unidade_metragem']}"
     )
 
     # Reagir com dedinho na mensagem principal
@@ -51,70 +61,19 @@ def handle_modal_submission(ack, body, view, client):
         timestamp=thread_ts
     )
 
-    # Salvar thread_ts para futuras interações (opcional: salvar no banco se necessário)
-    abrir_chamado.salvar_thread_ts(chamado.id, thread_ts)
-
-# Captura de chamado
-@app.action("capturar_chamado")
-def capturar_chamado(ack, body, client):
-    ack()
-    chamado_id = body["actions"][0]["value"]
-    user_id = body["user"]["id"]
-
-    thread_ts = abrir_chamado.obter_thread_ts(chamado_id)
-    canal_destino = os.getenv("SLACK_CANAL_CHAMADOS", "#comercial")
-
-    client.chat_postMessage(
-        channel=canal_destino,
-        thread_ts=thread_ts,
-        text=f"🔄 Chamado ID {chamado_id} foi *capturado* por <@{user_id}>"
-    )
-
-# Finalização de chamado
-@app.action("finalizar_chamado")
-def finalizar_chamado(ack, body, client):
-    ack()
-    chamado_id = body["actions"][0]["value"]
-    user_id = body["user"]["id"]
-
-    thread_ts = abrir_chamado.obter_thread_ts(chamado_id)
-    canal_destino = os.getenv("SLACK_CANAL_CHAMADOS", "#comercial")
-
-    client.chat_postMessage(
-        channel=canal_destino,
-        thread_ts=thread_ts,
-        text=f"✅ Chamado ID {chamado_id} foi *finalizado* por <@{user_id}>"
-    )
-
-# Reabertura de chamado
-@app.action("reabrir_chamado")
-def reabrir_chamado(ack, body, client):
-    ack()
-    chamado_id = body["actions"][0]["value"]
-    user_id = body["user"]["id"]
-
-    thread_ts = abrir_chamado.obter_thread_ts(chamado_id)
-    canal_destino = os.getenv("SLACK_CANAL_CHAMADOS", "#comercial")
-
-    client.chat_postMessage(
-        channel=canal_destino,
-        thread_ts=thread_ts,
-        text=f"♻️ Chamado ID {chamado_id} foi *reaberto* por <@{user_id}>"
-    )
-
 # Comando para exportar chamados
 @app.command("/exportar-chamado")
 def handle_exportar_command(ack, body, client):
     ack()
     user_id = body["user_id"]
-    exportar_chamados.enviar_relatorio(client, user_id)
+    services.enviar_relatorio(client, user_id)
 
 # Comando para listar meus chamados
 @app.command("/meus-chamados")
 def handle_meus_chamados(ack, body, client):
     ack()
     user_id = body["user_id"]
-    listar_chamados.exibir_lista(client, user_id)
+    services.exibir_lista(client, user_id)
 
 if __name__ == "__main__":
     SocketModeHandler(app, os.getenv("SLACK_APP_TOKEN")).start()
