@@ -35,7 +35,7 @@ def handle_chamado_command(ack, body, client):
 def handle_modal_submission(ack, body, view, client):
     ack()
     user_id = body["user"]["id"]
-    canal_destino = os.getenv("SLACK_CANAL_CHAMADOS", "#comercial")
+    canal_destino = os.getenv("SLACK_CANAL_CHAMADOS", "#comercial")   # <- AQUI você define o canal
 
     data = {}
     for block_id, block_data in view["state"]["values"].items():
@@ -47,43 +47,44 @@ def handle_modal_submission(ack, body, view, client):
     data["data_saida"] = datetime.strptime(data["data_saida"], "%Y-%m-%d") if data.get("data_saida") else None
     data["valor_locacao"] = float(data["valor_locacao"].replace("R$", "").replace(".", "").replace(",", ".").strip()) if data.get("valor_locacao") else None
 
-# 🔥 1. MANDA A MENSAGEM PRINCIPAL
-response = client.chat_postMessage(
-    channel=canal_destino,
-    text=f"🆕 Novo chamado aberto por <@{user_id}>: *{data['tipo_ticket']}*"
-)
+    # 🔥 1. MANDA A MENSAGEM PRINCIPAL
+    response = client.chat_postMessage(
+        channel=canal_destino,
+        text=f"🆕 Novo chamado aberto por <@{user_id}>: *{data['tipo_ticket']}*"
+    )
 
-thread_ts = response["ts"]
+    thread_ts = response["ts"]
 
-# 🔥 2. MANDA A MENSAGEM DE DETALHES + BOTÕES NA THREAD
-detalhes_chamado = services.formatar_mensagem_chamado(data, user_id)
+    # 🔥 2. MANDA A MENSAGEM DE DETALHES + BOTÕES NA THREAD
+    detalhes_chamado = services.formatar_mensagem_chamado(data, user_id)
 
-client.chat_postMessage(
-    channel=canal_destino,
-    thread_ts=thread_ts,
-    text="📝 Detalhes do chamado:",  # <- texto fallback obrigatório
-    blocks=[
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": detalhes_chamado
+    client.chat_postMessage(
+        channel=canal_destino,
+        thread_ts=thread_ts,
+        text="📝 Detalhes do chamado:",
+        blocks=[
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": detalhes_chamado
+                }
+            },
+            {
+                "type": "actions",
+                "elements": [
+                    {"type": "button", "text": {"type": "plain_text", "text": "🔄 Capturar"}, "value": "capturar", "action_id": "capturar_chamado"},
+                    {"type": "button", "text": {"type": "plain_text", "text": "✅ Finalizar"}, "value": "finalizar", "action_id": "finalizar_chamado"},
+                    {"type": "button", "text": {"type": "plain_text", "text": "♻️ Reabrir"}, "value": "reabrir", "action_id": "reabrir_chamado"},
+                    {"type": "button", "text": {"type": "plain_text", "text": "❌ Cancelar"}, "value": "cancelar", "action_id": "cancelar_chamado"}
+                ]
             }
-        },
-        {
-            "type": "actions",
-            "elements": [
-                {"type": "button", "text": {"type": "plain_text", "text": "🔄 Capturar"}, "value": "capturar", "action_id": "capturar_chamado"},
-                {"type": "button", "text": {"type": "plain_text", "text": "✅ Finalizar"}, "value": "finalizar", "action_id": "finalizar_chamado"},
-                {"type": "button", "text": {"type": "plain_text", "text": "♻️ Reabrir"}, "value": "reabrir", "action_id": "reabrir_chamado"},
-                {"type": "button", "text": {"type": "plain_text", "text": "❌ Cancelar"}, "value": "cancelar", "action_id": "cancelar_chamado"}
-            ]
-        }
-    ]
-)
+        ]
+    )
 
-# 🔥 3. SALVA no Banco associando ao `thread_ts`
-services.criar_ordem_servico(data, thread_ts)
+    # 🔥 3. SALVA no Banco associando ao `thread_ts`
+    services.criar_ordem_servico(data, thread_ts)
+
 
 # 🔄 Capturar chamado
 @app.action("capturar_chamado")
