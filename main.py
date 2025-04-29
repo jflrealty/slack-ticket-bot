@@ -104,6 +104,52 @@ def handle_finalizar_chamado(ack, body, client):
 def handle_reabrir_chamado(ack, body, client):
     ack()
     services.abrir_modal_reabertura(client, body)
+   
+    @app.action("cancelar_chamado")
+def handle_cancelar_chamado(ack, body, client):
+    ack()
+    ts = body["message"]["ts"]
+
+    client.views_open(
+        trigger_id=body["trigger_id"],
+        view={
+            "type": "modal",
+            "callback_id": "cancelar_chamado_modal",
+            "title": {"type": "plain_text", "text": "Cancelar Chamado"},
+            "submit": {"type": "plain_text", "text": "Cancelar"},
+            "private_metadata": ts,
+            "blocks": [
+                {
+                    "type": "input",
+                    "block_id": "motivo",
+                    "element": {
+                        "type": "plain_text_input",
+                        "action_id": "value",
+                        "multiline": True
+                    },
+                    "label": {"type": "plain_text", "text": "Motivo do Cancelamento"}
+                }
+            ]
+        }
+    )
+
+@app.view("cancelar_chamado_modal")
+def handle_cancelar_modal_submission(ack, body, view, client):
+    ack()
+    motivo = view["state"]["values"]["motivo"]["value"]["value"]
+    ts = view["private_metadata"]
+    user_id = body["user"]["id"]
+
+    db = SessionLocal()
+    chamado = db.query(OrdemServico).filter(OrdemServico.thread_ts == ts).first()
+    if chamado:
+        chamado.status = "cancelado"
+        chamado.motivo_cancelamento = motivo
+        chamado.data_fechamento = datetime.now()
+        db.commit()
+    db.close()
+
+    client.chat_postMessage(channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"), thread_ts=ts, text=f"❌ Chamado cancelado por <@{user_id}>!\n*Motivo:* {motivo}")
 
 @app.view("reabrir_chamado_modal")
 def handle_reabrir_modal_submission(ack, body, view, client):
