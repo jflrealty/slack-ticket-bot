@@ -27,3 +27,5 @@ class OrdemServico(Base):
     sla_status = Column(String, default="dentro do prazo")
     thread_ts = Column(Text)  # ✅ Já tava usando
     historico_reaberturas = Column(Text, default="")  # ✅ Novo campo aqui!!
+    motivo_cancelamento = Column(String, nullable=True)
+    
