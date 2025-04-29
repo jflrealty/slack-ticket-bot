@@ -160,7 +160,7 @@ def handle_reabrir_modal_submission(ack, body, view, client):
 
     client.chat_postMessage(channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"), thread_ts=ts, text=f"♻️ Chamado reaberto por <@{user_id}> para *{novo_tipo}*!")
 
-# ❌ Cancelar chamado (modal para motivo)
+# ❌ Cancelar chamado
 @app.action("cancelar_chamado")
 def handle_cancelar_chamado(ack, body, client):
     ack()
@@ -226,46 +226,10 @@ def handle_exportar_command(ack, body, client):
             "title": {"type": "plain_text", "text": "Exportar Chamados"},
             "submit": {"type": "plain_text", "text": "Exportar"},
             "close": {"type": "plain_text", "text": "Cancelar"},
-            "blocks": [
-                {
-                    "type": "input",
-                    "block_id": "tipo_arquivo",
-                    "label": {"type": "plain_text", "text": "Formato do Arquivo"},
-                    "element": {
-                        "type": "static_select",
-                        "action_id": "value",
-                        "placeholder": {"type": "plain_text", "text": "Escolha o formato"},
-                        "options": [
-                            {"text": {"type": "plain_text", "text": "PDF"}, "value": "pdf"},
-                            {"text": {"type": "plain_text", "text": "CSV"}, "value": "csv"}
-                        ]
-                    }
-                },
-                {
-                    "type": "input",
-                    "block_id": "data_inicio",
-                    "label": {"type": "plain_text", "text": "Data Inicial"},
-                    "element": {
-                        "type": "datepicker",
-                        "action_id": "value",
-                        "placeholder": {"type": "plain_text", "text": "Escolha a data inicial"}
-                    }
-                },
-                {
-                    "type": "input",
-                    "block_id": "data_fim",
-                    "label": {"type": "plain_text", "text": "Data Final"},
-                    "element": {
-                        "type": "datepicker",
-                        "action_id": "value",
-                        "placeholder": {"type": "plain_text", "text": "Escolha a data final"}
-                    }
-                }
-            ]
+            "blocks": services.montar_blocos_exportacao()
         }
     )
 
-# 📤 Handler do modal de exportação
 @app.view("escolher_exportacao")
 def exportar_chamados_handler(ack, body, view, client):
     ack()
