@@ -233,6 +233,30 @@ def exibir_lista(client, user_id):
 
     client.chat_postEphemeral(channel=user_id, user=user_id, text=texto)
 
+def montar_blocos_exportacao():
+    return [
+        {
+            "type": "input",
+            "block_id": "data_inicio",
+            "element": {
+                "type": "datepicker",
+                "action_id": "value",
+                "placeholder": {"type": "plain_text", "text": "Escolha a data inicial"}
+            },
+            "label": {"type": "plain_text", "text": "Data Inicial"}
+        },
+        {
+            "type": "input",
+            "block_id": "data_fim",
+            "element": {
+                "type": "datepicker",
+                "action_id": "value",
+                "placeholder": {"type": "plain_text", "text": "Escolha a data final"}
+            },
+            "label": {"type": "plain_text", "text": "Data Final"}
+        }
+    ]
+
 # 📤 Exportar PDF
 def exportar_pdf(client, user_id, data_inicio=None, data_fim=None):
     chamados = buscar_chamados(data_inicio, data_fim)
