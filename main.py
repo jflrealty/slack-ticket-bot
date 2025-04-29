@@ -225,35 +225,65 @@ def handle_exportar_command(ack, body, client):
             "callback_id": "escolher_exportacao",
             "title": {"type": "plain_text", "text": "Exportar Chamados"},
             "submit": {"type": "plain_text", "text": "Exportar"},
+            "close": {"type": "plain_text", "text": "Cancelar"},
             "blocks": [
                 {
                     "type": "input",
                     "block_id": "tipo_arquivo",
-                    "label": {"type": "plain_text", "text": "Formato"},
+                    "label": {"type": "plain_text", "text": "Formato do Arquivo"},
                     "element": {
                         "type": "static_select",
                         "action_id": "value",
-                        "placeholder": {"type": "plain_text", "text": "Escolha"},
+                        "placeholder": {"type": "plain_text", "text": "Escolha o formato"},
                         "options": [
                             {"text": {"type": "plain_text", "text": "PDF"}, "value": "pdf"},
                             {"text": {"type": "plain_text", "text": "CSV"}, "value": "csv"}
                         ]
+                    }
+                },
+                {
+                    "type": "input",
+                    "block_id": "data_inicio",
+                    "label": {"type": "plain_text", "text": "Data Inicial"},
+                    "element": {
+                        "type": "datepicker",
+                        "action_id": "value",
+                        "placeholder": {"type": "plain_text", "text": "Escolha a data inicial"}
+                    }
+                },
+                {
+                    "type": "input",
+                    "block_id": "data_fim",
+                    "label": {"type": "plain_text", "text": "Data Final"},
+                    "element": {
+                        "type": "datepicker",
+                        "action_id": "value",
+                        "placeholder": {"type": "plain_text", "text": "Escolha a data final"}
                     }
                 }
             ]
         }
     )
 
+# 📤 Handler do modal de exportação
 @app.view("escolher_exportacao")
 def exportar_chamados_handler(ack, body, view, client):
     ack()
-    tipo = view["state"]["values"]["tipo_arquivo"]["value"]["selected_option"]["value"]
     user_id = body["user"]["id"]
+    valores = view["state"]["values"]
+
+    tipo = valores["tipo_arquivo"]["value"]["selected_option"]["value"]
+
+    data_inicio = valores.get("data_inicio", {}).get("value", {}).get("selected_date")
+    data_fim = valores.get("data_fim", {}).get("value", {}).get("selected_date")
+
+    data_inicio = datetime.strptime(data_inicio, "%Y-%m-%d") if data_inicio else None
+    data_fim = datetime.strptime(data_fim, "%Y-%m-%d") if data_fim else None
 
     if tipo == "pdf":
-        services.exportar_pdf(client, user_id)
+        services.exportar_pdf(client, user_id, data_inicio, data_fim)
     else:
-        services.enviar_relatorio(client, user_id)
+        services.enviar_relatorio(client, user_id, data_inicio, data_fim)
 
 # ⏰ Agendar verificação de SLA vencido
 def iniciar_verificacao_sla():
