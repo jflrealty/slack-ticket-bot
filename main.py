@@ -47,16 +47,24 @@ def handle_modal_submission(ack, body, view, client):
     data["data_saida"] = datetime.strptime(data["data_saida"], "%Y-%m-%d") if data.get("data_saida") else None
     data["valor_locacao"] = float(data["valor_locacao"].replace("R$", "").replace(".", "").replace(",", ".").strip()) if data.get("valor_locacao") else None
 
+    # 🔥 1. MANDA A MENSAGEM PRINCIPAL
     response = client.chat_postMessage(
         channel=canal_destino,
-        text=f"🆕 Novo chamado aberto por <@{user_id}>: *{data['tipo_ticket']}*",
+        text=f"🆕 Novo chamado aberto por <@{user_id}>: *{data['tipo_ticket']}*"
+    )
+
+    thread_ts = response["ts"]
+
+    # 🔥 2. MANDA A MENSAGEM DE DETALHES + BOTÕES NA THREAD
+    detalhes_chamado = services.formatar_mensagem_chamado(data, user_id)
+    client.chat_postMessage(
+        channel=canal_destino,
+        thread_ts=thread_ts,
+        text=detalhes_chamado,
         blocks=[
             {
                 "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"🆕 *Novo chamado aberto por* <@{user_id}>: *{data['tipo_ticket']}*"
-                }
+                "text": {"type": "mrkdwn", "text": detalhes_chamado}
             },
             {
                 "type": "actions",
@@ -69,7 +77,8 @@ def handle_modal_submission(ack, body, view, client):
             }
         ]
     )
-    thread_ts = response["ts"]
+
+    # 🔥 3. SALVA no Banco associando ao `thread_ts`
     services.criar_ordem_servico(data, thread_ts)
 
 # 🔄 Capturar chamado
