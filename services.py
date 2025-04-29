@@ -12,10 +12,12 @@ from reportlab.lib.pagesizes import landscape, A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
+from dotenv import load_dotenv
+load_dotenv()
 
 client_slack = WebClient(token=os.getenv("SLACK_BOT_TOKEN"))
 
-# 🆔 Buscar nome real no Slack
+# 🔎 Buscar nome real do usuário pelo Slack ID
 def get_nome_slack(user_id):
     try:
         user_info = client_slack.users_info(user=user_id)
@@ -24,13 +26,112 @@ def get_nome_slack(user_id):
         print(f"❌ Erro ao buscar nome do usuário {user_id}: {e}")
         return user_id
 
+# 🔧 Blocos para abertura de chamado
+def montar_blocos_modal():
+    return [
+        {
+            "type": "input",
+            "block_id": "tipo_ticket",
+            "element": {
+                "type": "static_select",
+                "action_id": "value",
+                "placeholder": {"type": "plain_text", "text": "Escolha"},
+                "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
+                            for opt in ["Reserva", "Lista de Espera", "Pré bloqueio", "Prorrogação", "Aditivo"]],
+            },
+            "label": {"type": "plain_text", "text": "Tipo de Ticket"}
+        },
+        {
+            "type": "input",
+            "block_id": "tipo_contrato",
+            "element": {
+                "type": "static_select",
+                "action_id": "value",
+                "placeholder": {"type": "plain_text", "text": "Escolha"},
+                "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
+                            for opt in ["Short Stay", "Temporada", "Long Stay", "Comodato"]],
+            },
+            "label": {"type": "plain_text", "text": "Tipo de Contrato"}
+        },
+        {
+            "type": "input",
+            "block_id": "locatario",
+            "element": {"type": "plain_text_input", "action_id": "value"},
+            "label": {"type": "plain_text", "text": "Locatário"}
+        },
+        {
+            "type": "input",
+            "block_id": "moradores",
+            "element": {"type": "plain_text_input", "action_id": "value"},
+            "label": {"type": "plain_text", "text": "Moradores"}
+        },
+        {
+            "type": "input",
+            "block_id": "empreendimento",
+            "element": {
+                "type": "static_select",
+                "action_id": "value",
+                "placeholder": {"type": "plain_text", "text": "Escolha"},
+                "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
+                            for opt in ["JFL125", "JML747", "VO699", "VHOUSE", "AVNU"]],
+            },
+            "label": {"type": "plain_text", "text": "Empreendimento"}
+        },
+        {
+            "type": "input",
+            "block_id": "unidade_metragem",
+            "element": {"type": "plain_text_input", "action_id": "value"},
+            "label": {"type": "plain_text", "text": "Unidade e Metragem"}
+        },
+        {
+            "type": "input",
+            "block_id": "data_entrada",
+            "element": {"type": "datepicker", "action_id": "value"},
+            "label": {"type": "plain_text", "text": "Data de Entrada"}
+        },
+        {
+            "type": "input",
+            "block_id": "data_saida",
+            "element": {"type": "datepicker", "action_id": "value"},
+            "label": {"type": "plain_text", "text": "Data de Saída"}
+        },
+        {
+            "type": "input",
+            "block_id": "valor_locacao",
+            "element": {"type": "plain_text_input", "action_id": "value"},
+            "label": {"type": "plain_text", "text": "Valor da Locação"}
+        },
+        {
+            "type": "input",
+            "block_id": "responsavel",
+            "element": {
+                "type": "static_select",
+                "action_id": "value",
+                "placeholder": {"type": "plain_text", "text": "Escolha o Responsável"},
+                "options": [
+                    {"text": {"type": "plain_text", "text": "Rigol"}, "value": "U06TZRECVC4"},
+                    {"text": {"type": "plain_text", "text": "Marcela"}, "value": "U06U3RC11G9"},
+                    {"text": {"type": "plain_text", "text": "Victor"}, "value": "U07B2130TKQ"},
+                    {"text": {"type": "plain_text", "text": "Gabriel"}, "value": "U06TNKNRZHT"},
+                    {"text": {"type": "plain_text", "text": "Douglas"}, "value": "U08ANPS7V7Y"},
+                    {"text": {"type": "plain_text", "text": "Luciana"}, "value": "U06TAJU7C95"},
+                    {"text": {"type": "plain_text", "text": "Caroline"}, "value": "U08DRE18RR7"},
+                ]
+            },
+            "label": {"type": "plain_text", "text": "Responsável"}
+        }
+    ]
+
+# O RESTANTE DO SERVICES (Exportações, SLA, Histórico) continua normal — JÁ PRONTO conforme enviei acima!
+
+
 # 🔥 Ajustar nomes no histórico
 def ajustar_historico(texto):
     if not texto:
         return "–"
     texto = texto.replace("<@", "").replace(">", "")
     for palavra in texto.split():
-        if palavra.startswith("U0") or palavra.startswith("U"):
+        if palavra.startswith("U"):
             nome = get_nome_slack(palavra)
             texto = texto.replace(palavra, nome)
     return texto
@@ -151,14 +252,15 @@ def exportar_pdf(client, user_id, data_inicio=None, data_fim=None):
 
     tabela = Table(dados, repeatRows=1, colWidths=[30, 60, 60, 80, 60, 50, 50, 60, 60, 50, 30, 150, 100])
     tabela.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.lightgrey]),
-    ]))
+    ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+    ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+    ('FONTSIZE', (0, 0), (-1, -1), 8),
+    ('ALIGN', (0, 0), (-3, -1), 'CENTER'),  # Até antepenúltima coluna, centro
+    ('ALIGN', (-2, 0), (-1, -1), 'LEFT'),   # Histórico e Motivo, alinhar ESQUERDA
+    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.lightgrey]),
+        ]))
 
     elementos.append(tabela)
     doc.build(elementos)
