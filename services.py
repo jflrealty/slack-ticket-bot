@@ -194,6 +194,44 @@ def enviar_relatorio(client, user_id, data_inicio=None, data_fim=None):
         title=f"Relatório Chamados {agora}.csv",
         initial_comment="📎 Aqui está seu relatório CSV."
     )
+# 📋 Exibir lista dos chamados do usuário
+def exibir_lista(client, user_id):
+    db = SessionLocal()
+    chamados = db.query(OrdemServico).filter(
+        OrdemServico.solicitante == user_id,
+        OrdemServico.status.in_(["aberto", "em análise", "fechado", "cancelado"])
+    ).order_by(OrdemServico.status, OrdemServico.data_abertura.desc()).all()
+    db.close()
+
+    if not chamados:
+        client.chat_postEphemeral(channel=user_id, user=user_id, text="✅ Você não possui chamados registrados.")
+        return
+
+    abertos, em_analise, fechados, cancelados = [], [], [], []
+
+    for c in chamados:
+        sla_emoji = "🔴" if c.sla_status == "fora do prazo" else "🟢"
+        linha = f"{sla_emoji} ID {c.id} | {c.empreendimento} | {c.tipo_ticket} | Resp: <@{c.responsavel}>"
+        if c.status == "aberto":
+            abertos.append(linha)
+        elif c.status == "em análise":
+            em_analise.append(linha)
+        elif c.status == "fechado":
+            fechados.append(linha)
+        elif c.status == "cancelado":
+            cancelados.append(linha)
+
+    texto = "*📋 Seus Chamados:*\n"
+    if em_analise:
+        texto += "\n🟡 *Em Análise:*\n" + "\n".join(em_analise)
+    if abertos:
+        texto += "\n🟢 *Abertos:*\n" + "\n".join(abertos)
+    if fechados:
+        texto += "\n⚪️ *Fechados:*\n" + "\n".join(fechados)
+    if cancelados:
+        texto += "\n❌ *Cancelados:*\n" + "\n".join(cancelados)
+
+    client.chat_postEphemeral(channel=user_id, user=user_id, text=texto)
 
 # 📤 Exportar PDF
 def exportar_pdf(client, user_id, data_inicio=None, data_fim=None):
