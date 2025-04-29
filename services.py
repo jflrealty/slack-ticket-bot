@@ -280,6 +280,44 @@ def exportar_pdf(client, user_id):
         initial_comment="📎 Aqui está seu relatório em PDF."
     )
 
+def montar_blocos_exportacao():
+    return [
+        {
+            "type": "input",
+            "block_id": "tipo_arquivo",
+            "label": {"type": "plain_text", "text": "Formato do Arquivo"},
+            "element": {
+                "type": "static_select",
+                "action_id": "value",
+                "placeholder": {"type": "plain_text", "text": "Escolha o formato"},
+                "options": [
+                    {"text": {"type": "plain_text", "text": "PDF"}, "value": "pdf"},
+                    {"text": {"type": "plain_text", "text": "CSV"}, "value": "csv"}
+                ]
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "data_inicio",
+            "label": {"type": "plain_text", "text": "Data Inicial"},
+            "element": {
+                "type": "datepicker",
+                "action_id": "value",
+                "placeholder": {"type": "plain_text", "text": "Escolha a data inicial"}
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "data_fim",
+            "label": {"type": "plain_text", "text": "Data Final"},
+            "element": {
+                "type": "datepicker",
+                "action_id": "value",
+                "placeholder": {"type": "plain_text", "text": "Escolha a data final"}
+            }
+        }
+    ]
+
 # 📋 Exibir lista de chamados do usuário
 def exibir_lista(client, user_id):
     db = SessionLocal()
