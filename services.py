@@ -15,6 +15,7 @@ from reportlab.lib.units import inch
 
 client_slack = WebClient(token=os.getenv("SLACK_BOT_TOKEN"))
 
+# 🆔 Buscar nome real no Slack
 def get_nome_slack(user_id):
     try:
         user_info = client_slack.users_info(user=user_id)
@@ -23,44 +24,19 @@ def get_nome_slack(user_id):
         print(f"❌ Erro ao buscar nome do usuário {user_id}: {e}")
         return user_id
 
-def montar_blocos_modal():
-    return [
-        # (Seus blocos do modal aqui - sem alterações)
-    ]
+# 🔥 Ajustar nomes no histórico
+def ajustar_historico(texto):
+    if not texto:
+        return "–"
+    texto = texto.replace("<@", "").replace(">", "")
+    for palavra in texto.split():
+        if palavra.startswith("U0") or palavra.startswith("U"):
+            nome = get_nome_slack(palavra)
+            texto = texto.replace(palavra, nome)
+    return texto
 
-def criar_ordem_servico(data, thread_ts=None):
-    session = SessionLocal()
-    try:
-        sla_prazo = datetime.utcnow() + timedelta(hours=24)
-        nova_os = OrdemServico(
-            tipo_ticket=data["tipo_ticket"],
-            tipo_contrato=data["tipo_contrato"],
-            locatario=data["locatario"],
-            moradores=data["moradores"],
-            empreendimento=data["empreendimento"],
-            unidade_metragem=data["unidade_metragem"],
-            data_entrada=data["data_entrada"],
-            data_saida=data["data_saida"],
-            valor_locacao=data["valor_locacao"],
-            responsavel=data["responsavel"],
-            solicitante=data["solicitante"],
-            status="aberto",
-            data_abertura=datetime.utcnow(),
-            sla_limite=sla_prazo,
-            sla_status="dentro do prazo",
-            thread_ts=thread_ts
-        )
-        session.add(nova_os)
-        session.commit()
-        session.refresh(nova_os)
-    except Exception as e:
-        print("❌ Erro ao salvar no banco:", e)
-        session.rollback()
-    finally:
-        session.close()
-    return nova_os
-
-def enviar_relatorio(client, user_id, data_inicio=None, data_fim=None):
+# 📋 Buscar chamados com filtro de datas
+def buscar_chamados(data_inicio=None, data_fim=None):
     db = SessionLocal()
     query = db.query(OrdemServico).filter(
         OrdemServico.status.in_(["aberto", "em análise", "fechado", "cancelado"])
@@ -72,6 +48,11 @@ def enviar_relatorio(client, user_id, data_inicio=None, data_fim=None):
 
     chamados = query.order_by(OrdemServico.id.desc()).all()
     db.close()
+    return chamados
+
+# 📤 Exportar CSV
+def enviar_relatorio(client, user_id, data_inicio=None, data_fim=None):
+    chamados = buscar_chamados(data_inicio, data_fim)
 
     if not chamados:
         client.chat_postEphemeral(channel=user_id, user=user_id, text="❌ Nenhum chamado encontrado no período.")
@@ -84,7 +65,7 @@ def enviar_relatorio(client, user_id, data_inicio=None, data_fim=None):
         writer = csv.writer(arquivo_csv)
         writer.writerow([
             "ID", "Tipo", "Contrato", "Locatário", "Empreendimento", "Unidade",
-            "Valor", "Responsável", "Solicitante", "Status", "SLA", "Histórico"
+            "Valor", "Responsável", "Solicitante", "Status", "SLA", "Histórico", "Motivo Cancelamento"
         ])
         for c in chamados:
             historico = ajustar_historico(c.historico_reaberturas)
@@ -99,8 +80,9 @@ def enviar_relatorio(client, user_id, data_inicio=None, data_fim=None):
                 get_nome_slack(c.responsavel),
                 get_nome_slack(c.solicitante),
                 c.status,
-                "No Prazo" if c.sla_status == "dentro do prazo" else "Vencido",
-                historico
+                "🟢" if c.sla_status == "dentro do prazo" else "🔴",
+                historico,
+                c.motivo_cancelamento or "–"
             ])
 
     response = client.conversations_open(users=user_id)
@@ -112,18 +94,9 @@ def enviar_relatorio(client, user_id, data_inicio=None, data_fim=None):
         initial_comment="📎 Aqui está seu relatório CSV."
     )
 
+# 📤 Exportar PDF
 def exportar_pdf(client, user_id, data_inicio=None, data_fim=None):
-    db = SessionLocal()
-    query = db.query(OrdemServico).filter(
-        OrdemServico.status.in_(["aberto", "em análise", "fechado", "cancelado"])
-    )
-    if data_inicio:
-        query = query.filter(OrdemServico.data_abertura >= data_inicio)
-    if data_fim:
-        query = query.filter(OrdemServico.data_abertura <= data_fim)
-
-    chamados = query.order_by(OrdemServico.id.desc()).all()
-    db.close()
+    chamados = buscar_chamados(data_inicio, data_fim)
 
     if not chamados:
         client.chat_postEphemeral(channel=user_id, user=user_id, text="❌ Nenhum chamado encontrado no período.")
@@ -131,27 +104,29 @@ def exportar_pdf(client, user_id, data_inicio=None, data_fim=None):
 
     agora = datetime.now().strftime("%Y%m%d%H%M%S")
     caminho = f"/tmp/chamados_{agora}.pdf"
-    doc = SimpleDocTemplate(caminho, pagesize=landscape(A4))
+    doc = SimpleDocTemplate(caminho, pagesize=landscape(A4), rightMargin=20, leftMargin=20, topMargin=20, bottomMargin=20)
     estilos = getSampleStyleSheet()
     elementos = []
 
+    # Adiciona logo
     logo_url = "https://raw.githubusercontent.com/jflrealty/images/main/JFL_logotipo_completo.jpg"
     try:
         img_data = urllib.request.urlopen(logo_url).read()
         img_io = io.BytesIO(img_data)
         logo = Image(img_io)
-        logo._restrictSize(6*inch, 2*inch)
+        logo._restrictSize(7*inch, 2*inch)
         elementos.append(logo)
-        elementos.append(Spacer(1, 12))
+        elementos.append(Spacer(1, 20))
     except Exception as e:
         print(f"❌ Erro ao carregar logo:", e)
 
     elementos.append(Paragraph(f"📋 Relatório de Chamados - {datetime.now().strftime('%d/%m/%Y')}", estilos["Heading2"]))
-    elementos.append(Spacer(1, 12))
+    elementos.append(Spacer(1, 20))
 
+    # Cabeçalho
     dados = [[
         "ID", "Tipo", "Contrato", "Locatário", "Empreendimento", "Unidade",
-        "Valor", "Responsável", "Status", "SLA", "Histórico"
+        "Valor", "Responsável", "Solicitante", "Status", "SLA", "Histórico", "Motivo Cancelamento"
     ]]
 
     for c in chamados:
@@ -167,18 +142,21 @@ def exportar_pdf(client, user_id, data_inicio=None, data_fim=None):
             c.unidade_metragem,
             valor,
             get_nome_slack(c.responsavel),
+            get_nome_slack(c.solicitante),
             c.status.upper(),
             sla_formatado,
-            historico
+            historico,
+            c.motivo_cancelamento or "–"
         ])
 
-    tabela = Table(dados, repeatRows=1, colWidths=[30, 70, 70, 80, 70, 70, 50, 60, 60, 40, 130])
+    tabela = Table(dados, repeatRows=1, colWidths=[30, 60, 60, 80, 60, 50, 50, 60, 60, 50, 30, 150, 100])
     tabela.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.lightgrey]),
     ]))
 
@@ -194,16 +172,7 @@ def exportar_pdf(client, user_id, data_inicio=None, data_fim=None):
         initial_comment="📎 Aqui está seu relatório PDF."
     )
 
-def ajustar_historico(texto):
-    if not texto:
-        return "–"
-    texto = texto.replace("<@", "").replace(">", "")
-    for palavra in texto.split():
-        if palavra.startswith("U0"):
-            nome = get_nome_slack(palavra)
-            texto = texto.replace(palavra, nome)
-    return texto
-
+# ⏰ Verificar SLA vencido
 def verificar_sla_vencido():
     db = SessionLocal()
     agora = datetime.now()
@@ -217,6 +186,7 @@ def verificar_sla_vencido():
         db.commit()
     db.close()
 
+# 🔔 Lembrar chamados vencidos
 def lembrar_chamados_vencidos(client):
     db = SessionLocal()
     chamados = db.query(OrdemServico).filter(
