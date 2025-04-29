@@ -189,13 +189,21 @@ def handle_exportar_command(ack, body, client):
 @app.view("escolher_exportacao")
 def exportar_chamados_handler(ack, body, view, client):
     ack()
-    tipo = view["state"]["values"]["tipo_arquivo"]["value"]["selected_option"]["value"]
     user_id = body["user"]["id"]
+    valores = view["state"]["values"]
+
+    tipo = valores["tipo_arquivo"]["value"]["selected_option"]["value"]
+
+    data_inicio = valores.get("data_inicio", {}).get("value", {}).get("selected_date")
+    data_fim = valores.get("data_fim", {}).get("value", {}).get("selected_date")
+
+    data_inicio = datetime.strptime(data_inicio, "%Y-%m-%d") if data_inicio else None
+    data_fim = datetime.strptime(data_fim, "%Y-%m-%d") if data_fim else None
 
     if tipo == "pdf":
-        services.exportar_pdf(client, user_id)
+        services.exportar_pdf(client, user_id, data_inicio, data_fim)
     else:
-        services.enviar_relatorio(client, user_id)
+        services.enviar_relatorio(client, user_id, data_inicio, data_fim)
 
 # 📋 Comando listar meus chamados
 @app.command("/meus-chamados")
