@@ -445,6 +445,94 @@ def abrir_modal_reabertura(client, body):
         }
     )
 
+def abrir_modal_edicao(client, trigger_id, thread_ts):
+    db = SessionLocal()
+    chamado = db.query(OrdemServico).filter(OrdemServico.thread_ts == thread_ts).first()
+    db.close()
+    if not chamado:
+        return
+
+    client.views_open(
+        trigger_id=trigger_id,
+        view={
+            "type": "modal",
+            "callback_id": "editar_chamado_modal",
+            "title": {"type": "plain_text", "text": "Editar Chamado"},
+            "submit": {"type": "plain_text", "text": "Salvar"},
+            "private_metadata": thread_ts,
+            "blocks": [
+                {
+                    "type": "section",
+                    "block_id": "tipo_ticket",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*Tipo de Ticket:* `{chamado.tipo_ticket}` (não editável)"
+                    }
+                },
+                {
+                    "type": "input",
+                    "block_id": "tipo_contrato",
+                    "element": {
+                        "type": "plain_text_input",
+                        "action_id": "value",
+                        "initial_value": chamado.tipo_contrato
+                    },
+                    "label": {"type": "plain_text", "text": "Tipo de Contrato"}
+                },
+                {
+                    "type": "input",
+                    "block_id": "locatario",
+                    "element": {
+                        "type": "plain_text_input",
+                        "action_id": "value",
+                        "initial_value": chamado.locatario
+                    },
+                    "label": {"type": "plain_text", "text": "Locatário"}
+                },
+                {
+                    "type": "input",
+                    "block_id": "moradores",
+                    "element": {
+                        "type": "plain_text_input",
+                        "action_id": "value",
+                        "initial_value": chamado.moradores
+                    },
+                    "label": {"type": "plain_text", "text": "Moradores"}
+                },
+                {
+                    "type": "input",
+                    "block_id": "empreendimento",
+                    "element": {
+                        "type": "plain_text_input",
+                        "action_id": "value",
+                        "initial_value": chamado.empreendimento
+                    },
+                    "label": {"type": "plain_text", "text": "Empreendimento"}
+                },
+                {
+                    "type": "input",
+                    "block_id": "unidade_metragem",
+                    "element": {
+                        "type": "plain_text_input",
+                        "action_id": "value",
+                        "initial_value": chamado.unidade_metragem
+                    },
+                    "label": {"type": "plain_text", "text": "Unidade e Metragem"}
+                },
+                {
+                    "type": "input",
+                    "block_id": "valor_locacao",
+                    "element": {
+                        "type": "plain_text_input",
+                        "action_id": "value",
+                        "initial_value": str(chamado.valor_locacao or "")
+                    },
+                    "label": {"type": "plain_text", "text": "Valor da Locação"}
+                }
+            ]
+        }
+    )
+
 # ♻️ Reabrir chamado
 def reabrir_chamado(client, body, view):
     novo_tipo = view["state"]["values"]["novo_tipo_ticket"]["value"]["selected_option"]["value"]
