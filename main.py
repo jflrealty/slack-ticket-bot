@@ -1,14 +1,23 @@
+# 📦 Slack SDK e Bolt
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_sdk import WebClient
+
+# 🗃️ Banco de dados e modelos
 from database import SessionLocal
+from models import OrdemServico
+
+# 📚 Serviços internos
 import services
+
+# 🛠️ Utilitários e sistema
 import os
-from dotenv import load_dotenv
-from datetime import datetime
 import threading
 import time
+from datetime import datetime
+from dotenv import load_dotenv
 
+# 🔐 Carregar variáveis de ambiente
 load_dotenv()
 
 app = App(token=os.getenv("SLACK_BOT_TOKEN"))
