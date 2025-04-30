@@ -82,8 +82,8 @@ def handle_modal_submission(ack, body, view, client):
                     {"type": "button", "text": {"type": "plain_text", "text": "🔄 Capturar"}, "value": "capturar", "action_id": "capturar_chamado"},
                     {"type": "button", "text": {"type": "plain_text", "text": "✅ Finalizar"}, "value": "finalizar", "action_id": "finalizar_chamado"},
                     {"type": "button", "text": {"type": "plain_text", "text": "♻️ Reabrir"}, "value": "reabrir", "action_id": "reabrir_chamado"},
-                    {"type": "button", "text": {"type": "plain_text", "text": "❌ Cancelar"}, "value": "cancelar", "action_id": "cancelar_chamado"}
-
+                    {"type": "button", "text": {"type": "plain_text", "text": "❌ Cancelar"}, "value": "cancelar", "action_id": "cancelar_chamado"},
+                    {"type": "button", "text": {"type": "plain_text", "text": "✏️ Editar"}, "value": "editar", "action_id": "editar_chamado"}
                 ]
             }
         ]
@@ -122,6 +122,13 @@ def handle_cancelar_chamado(ack, body, client):
     ack()
     ts = body["message"]["ts"]
 
+# ✏️ Editar chamado
+@app.action("editar_chamado")
+def handle_editar_chamado(ack, body, client):
+    ack()
+    ts = body["message"]["ts"]
+    services.abrir_modal_edicao(client, body["trigger_id"], ts)
+
     client.views_open(
         trigger_id=body["trigger_id"],
         view={
@@ -150,6 +157,32 @@ def handle_cancelar_chamado(ack, body, client):
 def handle_reabrir_modal_submission(ack, body, view, client):
     ack()
     services.reabrir_chamado(client, body, view)
+
+@app.view("editar_chamado_modal")
+def handle_editar_chamado_submission(ack, body, view, client):
+    ack()
+    ts = view["private_metadata"]
+    user_id = body["user"]["id"]
+    valores = view["state"]["values"]
+
+    db = SessionLocal()
+    chamado = db.query(OrdemServico).filter(OrdemServico.thread_ts == ts).first()
+    if chamado:
+        chamado.tipo_contrato = valores["tipo_contrato"]["value"]["value"]
+        chamado.locatario = valores["locatario"]["value"]["value"]
+        chamado.moradores = valores["moradores"]["value"]["value"]
+        chamado.empreendimento = valores["empreendimento"]["value"]["value"]
+        chamado.unidade_metragem = valores["unidade_metragem"]["value"]["value"]
+        chamado.valor_locacao = float(valores["valor_locacao"]["value"]["value"].replace("R$", "").replace(".", "").replace(",", ".").strip())
+
+        db.commit()
+    db.close()
+
+    client.chat_postMessage(
+        channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
+        thread_ts=ts,
+        text=f"✏️ Chamado editado por <@{user_id}> com sucesso."
+    )
 
 @app.view("cancelar_chamado_modal")
 def handle_cancelar_modal_submission(ack, body, view, client):
