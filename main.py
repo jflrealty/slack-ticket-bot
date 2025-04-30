@@ -72,6 +72,8 @@ def handle_modal_submission(ack, body, view, client):
                     {"type": "button", "text": {"type": "plain_text", "text": "🔄 Capturar"}, "value": "capturar", "action_id": "capturar_chamado"},
                     {"type": "button", "text": {"type": "plain_text", "text": "✅ Finalizar"}, "value": "finalizar", "action_id": "finalizar_chamado"},
                     {"type": "button", "text": {"type": "plain_text", "text": "♻️ Reabrir"}, "value": "reabrir", "action_id": "reabrir_chamado"}
+                    { "type": "button", "text": {"type": "plain_text", "text": "❌ Cancelar"}, "value": "cancelar", "action_id": "cancelar_chamado"}
+
                 ]
             }
         ]
@@ -104,10 +106,62 @@ def handle_reabrir_chamado(ack, body, client):
     ack()
     services.abrir_modal_reabertura(client, body)
 
+# ❌ Cancelar chamado
+@app.action("cancelar_chamado")
+def handle_cancelar_chamado(ack, body, client):
+    ack()
+    ts = body["message"]["ts"]
+
+    client.views_open(
+        trigger_id=body["trigger_id"],
+        view={
+            "type": "modal",
+            "callback_id": "cancelar_chamado_modal",
+            "title": {"type": "plain_text", "text": "Cancelar Chamado"},
+            "submit": {"type": "plain_text", "text": "Confirmar"},
+            "private_metadata": ts,
+            "blocks": [
+                {
+                    "type": "input",
+                    "block_id": "motivo",
+                    "element": {
+                        "type": "plain_text_input",
+                        "action_id": "value",
+                        "multiline": True,
+                        "placeholder": {"type": "plain_text", "text": "Descreva o motivo do cancelamento"}
+                    },
+                    "label": {"type": "plain_text", "text": "Motivo do Cancelamento"}
+                }
+            ]
+        }
+    )
+
 @app.view("reabrir_chamado_modal")
 def handle_reabrir_modal_submission(ack, body, view, client):
     ack()
     services.reabrir_chamado(client, body, view)
+
+@app.view("cancelar_chamado_modal")
+def handle_cancelar_modal_submission(ack, body, view, client):
+    ack()
+    motivo = view["state"]["values"]["motivo"]["value"]["value"]
+    ts = view["private_metadata"]
+    user_id = body["user"]["id"]
+
+    db = SessionLocal()
+    chamado = db.query(OrdemServico).filter(OrdemServico.thread_ts == ts).first()
+    if chamado:
+        chamado.status = "cancelado"
+        chamado.motivo_cancelamento = motivo
+        chamado.data_fechamento = datetime.now()
+        db.commit()
+    db.close()
+
+    client.chat_postMessage(
+        channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
+        thread_ts=ts,
+        text=f"❌ Chamado cancelado por <@{user_id}>!\n*Motivo:* {motivo}"
+    )
 
 # 📤 Comando exportar chamado
 @app.command("/exportar-chamado")
@@ -120,35 +174,28 @@ def handle_exportar_command(ack, body, client):
             "callback_id": "escolher_exportacao",
             "title": {"type": "plain_text", "text": "Exportar Chamados"},
             "submit": {"type": "plain_text", "text": "Exportar"},
-            "blocks": [
-                {
-                    "type": "input",
-                    "block_id": "tipo_arquivo",
-                    "label": {"type": "plain_text", "text": "Formato do Arquivo"},
-                    "element": {
-                        "type": "static_select",
-                        "action_id": "value",
-                        "placeholder": {"type": "plain_text", "text": "Escolha um formato"},
-                        "options": [
-                            {"text": {"type": "plain_text", "text": "PDF"}, "value": "pdf"},
-                            {"text": {"type": "plain_text", "text": "CSV"}, "value": "csv"}
-                        ]
-                    }
-                }
-            ]
+            "close": {"type": "plain_text", "text": "Cancelar"},
+            "blocks": services.montar_blocos_exportacao()
         }
     )
 
 @app.view("escolher_exportacao")
 def exportar_chamados_handler(ack, body, view, client):
     ack()
-    tipo = view["state"]["values"]["tipo_arquivo"]["value"]["selected_option"]["value"]
     user_id = body["user"]["id"]
+    valores = view["state"]["values"]
+
+    tipo = valores["tipo_arquivo"]["value"]["selected_option"]["value"]
+    data_inicio = valores.get("data_inicio", {}).get("value", {}).get("selected_date")
+    data_fim = valores.get("data_fim", {}).get("value", {}).get("selected_date")
+
+    data_inicio = datetime.strptime(data_inicio, "%Y-%m-%d") if data_inicio else None
+    data_fim = datetime.strptime(data_fim, "%Y-%m-%d") if data_fim else None
 
     if tipo == "pdf":
-        services.exportar_pdf(client, user_id)
+        services.exportar_pdf(client, user_id, data_inicio, data_fim)
     else:
-        services.enviar_relatorio(client, user_id)
+        services.enviar_relatorio(client, user_id, data_inicio, data_fim)
 
 # 📋 Comando listar meus chamados
 @app.command("/meus-chamados")
