@@ -18,6 +18,9 @@ client_slack = WebClient(token=os.getenv("SLACK_BOT_TOKEN"))
 
 # 🧠 Buscar nome real do usuário no Slack
 def get_nome_slack(user_id):
+    if not user_id or not user_id.startswith("U"):
+        return user_id  # Retorna como está se não for Slack ID (ex: login, e-mail, etc.)
+
     try:
         user_info = client_slack.users_info(user=user_id)
         return user_info["user"]["real_name"]
