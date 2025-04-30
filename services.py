@@ -212,10 +212,9 @@ def enviar_relatorio(client, user_id, data_inicio=None, data_fim=None):
         initial_comment="📎 Aqui está seu relatório de chamados."
     )
 # 📤 Exportar PDF com logo JFL e histórico
-def exportar_pdf(client, user_id):
+def exportar_pdf(client, user_id, data_inicio=None, data_fim=None):
     db = SessionLocal()
-    chamados = db.query(OrdemServico).order_by(OrdemServico.id.desc()).all()
-    db.close()
+    chamados = buscar_chamados(data_inicio, data_fim)
 
     if not chamados:
         client.chat_postEphemeral(channel=user_id, user=user_id, text="❌ Nenhum chamado encontrado para exportar.")
