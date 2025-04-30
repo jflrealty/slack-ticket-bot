@@ -154,10 +154,24 @@ def criar_ordem_servico(data, thread_ts=None):
         session.close()
     return nova_os
 
-# 📋 Exportar CSV
-def enviar_relatorio(client, user_id):
+# Buscar chamados
+def buscar_chamados(data_inicio=None, data_fim=None):
     db = SessionLocal()
-    chamados = db.query(OrdemServico).order_by(OrdemServico.id.desc()).all()
+    query = db.query(OrdemServico).filter(
+        OrdemServico.status.in_(["aberto", "em análise", "fechado", "cancelado"])
+    )
+    if data_inicio:
+        query = query.filter(OrdemServico.data_abertura >= data_inicio)
+    if data_fim:
+        query = query.filter(OrdemServico.data_abertura <= data_fim)
+
+    chamados = query.order_by(OrdemServico.id.desc()).all()
+    db.close()
+    return chamados
+
+# 📋 Exportar CSV
+def enviar_relatorio(client, user_id, data_inicio=None, data_fim=None):
+    chamados = buscar_chamados(data_inicio, data_fim)
     db.close()
 
     if not chamados:
