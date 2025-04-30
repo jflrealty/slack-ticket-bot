@@ -172,7 +172,6 @@ def buscar_chamados(data_inicio=None, data_fim=None):
 # 📋 Exportar CSV
 def enviar_relatorio(client, user_id, data_inicio=None, data_fim=None):
     chamados = buscar_chamados(data_inicio, data_fim)
-    db.close()
 
     if not chamados:
         client.chat_postEphemeral(channel=user_id, user=user_id, text="❌ Nenhum chamado encontrado para exportar.")
