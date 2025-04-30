@@ -57,15 +57,15 @@ def handle_modal_submission(ack, body, view, client):
 
     response = client.chat_postMessage(
         channel=canal_destino,
-        text=f"🆕 ({data['locatario']}) Novo chamado aberto por <@{user}>: *{data['tipo_ticket']}*",
-        blocks=[
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"🆕 *Novo chamado aberto por* <@{user}>: *{data['tipo_ticket']}*"
-                }
-            },
+     text=f"🆕 ({data['locatario']}) Novo chamado aberto por <@{user}>: *{data['tipo_ticket']}*",
+    blocks=[
+        {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": f"🆕 (*{data['locatario']}*) Novo chamado aberto por <@{user}>: *{data['tipo_ticket']}*"
+        }
+    },
             {
                 "type": "actions",
                 "elements": [
