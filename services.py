@@ -549,8 +549,8 @@ def reabrir_chamado(client, body, view):
         chamado.responsavel = None
 
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
-        novo_historico = f"[{now}] <@{user_id}> reabriu para *{novo_tipo}*\n"
-        chamado.historico_reaberturas = (chamado.historico_reaberturas or "") + novo_historico
+        nome_real = get_nome_slack(user_id)
+        novo_historico = f"[{now}] {nome_real} reabriu para *{novo_tipo}*\n"
 
         db.commit()
     db.close()
@@ -560,6 +560,17 @@ def reabrir_chamado(client, body, view):
         thread_ts=ts,
         text=f"♻️ Chamado reaberto por <@{user_id}>!\nNovo Tipo de Ticket: *{novo_tipo}*"
     )
+
+def ajustar_historico(texto):
+    if not texto:
+        return "–"
+    palavras = texto.split()
+    for palavra in palavras:
+        if palavra.startswith("<@") and palavra.endswith(">"):
+            user_id = palavra[2:-1]
+            nome = get_nome_slack(user_id)
+            texto = texto.replace(palavra, nome)
+    return texto
 
 # 📦 Modal de exportação com filtro por data e tipo
 def montar_blocos_exportacao():
