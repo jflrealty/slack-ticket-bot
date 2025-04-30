@@ -473,3 +473,42 @@ def reabrir_chamado(client, body, view):
         thread_ts=ts,
         text=f"♻️ Chamado reaberto por <@{user_id}>!\nNovo Tipo de Ticket: *{novo_tipo}*"
     )
+
+# 📦 Modal de exportação com filtro por data e tipo
+def montar_blocos_exportacao():
+    return [
+        {
+            "type": "input",
+            "block_id": "tipo_arquivo",
+            "label": {"type": "plain_text", "text": "Formato do Arquivo"},
+            "element": {
+                "type": "static_select",
+                "action_id": "value",
+                "placeholder": {"type": "plain_text", "text": "Escolha o formato"},
+                "options": [
+                    {"text": {"type": "plain_text", "text": "PDF"}, "value": "pdf"},
+                    {"text": {"type": "plain_text", "text": "CSV"}, "value": "csv"}
+                ]
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "data_inicio",
+            "element": {
+                "type": "datepicker",
+                "action_id": "value",
+                "placeholder": {"type": "plain_text", "text": "Escolha a data inicial"}
+            },
+            "label": {"type": "plain_text", "text": "Data Inicial"}
+        },
+        {
+            "type": "input",
+            "block_id": "data_fim",
+            "element": {
+                "type": "datepicker",
+                "action_id": "value",
+                "placeholder": {"type": "plain_text", "text": "Escolha a data final"}
+            },
+            "label": {"type": "plain_text", "text": "Data Final"}
+        }
+    ]
