@@ -1,6 +1,7 @@
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_sdk import WebClient
+from database import SessionLocal
 import services
 import os
 from dotenv import load_dotenv
