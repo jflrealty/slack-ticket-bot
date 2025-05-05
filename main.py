@@ -252,7 +252,7 @@ def iniciar_verificacao_sla():
         while True:
             print("⏰ Verificando SLA vencido...")
             services.verificar_sla_vencido()
-            services.lembrar_chamados_vencidos(client)
+            #services.lembrar_chamados_vencidos(client)
             time.sleep(3600)  # 60 minutos
     threading.Thread(target=loop, daemon=True).start()
 
