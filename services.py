@@ -39,7 +39,7 @@ def montar_blocos_modal():
                 "action_id": "value",
                 "placeholder": {"type": "plain_text", "text": "Escolha"},
                 "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
-                            for opt in ["Reserva", "Lista de Espera", "Pré bloqueio", "Prorrogação", "Aditivo"]],
+                            for opt in ["Reserva", "Lista de Espera", "Pré bloqueio", "Prorrogação", "Aditivo",]],
             },
             "label": {"type": "plain_text", "text": "Tipo de Ticket"}
         },
@@ -51,7 +51,7 @@ def montar_blocos_modal():
                 "action_id": "value",
                 "placeholder": {"type": "plain_text", "text": "Escolha"},
                 "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
-                            for opt in ["Short Stay", "Temporada", "Long Stay", "Comodato"]],
+                            for opt in ["Short Stay", "Temporada", "Long Stay", "Comodato", "Cortesia"]],
             },
             "label": {"type": "plain_text", "text": "Tipo de Contrato"}
         },
@@ -117,7 +117,8 @@ def montar_blocos_modal():
                     {"text": {"type": "plain_text", "text": "Gabriel"}, "value": "U06TNKNRZHT"},
                     {"text": {"type": "plain_text", "text": "Douglas"}, "value": "U08ANPS7V7Y"},
                     {"text": {"type": "plain_text", "text": "Luciana"}, "value": "U06TAJU7C95"},
-                    {"text": {"type": "plain_text", "text": "Caroline"}, "value": "U08DRE18RR7"}
+                    {"text": {"type": "plain_text", "text": "Caroline"}, "value": "U08DRE18RR7"},
+                    {"text": {"type": "plain_text", "text": "Gabriella"}, "value": "U08NSKS2AKH"}
                 ]
             },
             "label": {"type": "plain_text", "text": "Responsável"}
