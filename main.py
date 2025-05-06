@@ -165,16 +165,27 @@ def handle_editar_chamado_submission(ack, body, view, client):
     user_id = body["user"]["id"]
     valores = view["state"]["values"]
 
+    tipo_contrato = valores["tipo_contrato"]["value"]
+    locatario = valores["locatario"]["value"]
+    moradores = valores["moradores"]["value"]
+    empreendimento = valores["empreendimento"]["value"]
+    unidade_metragem = valores["unidade_metragem"]["value"]
+    valor_str = valores["valor_locacao"]["value"]
+
+    try:
+        valor_locacao = float(valor_str.replace("R$", "").replace(".", "").replace(",", ".").strip())
+    except ValueError:
+        valor_locacao = None
+
     db = SessionLocal()
     chamado = db.query(OrdemServico).filter(OrdemServico.thread_ts == ts).first()
     if chamado:
-        chamado.tipo_contrato = valores["tipo_contrato"]["value"]["value"]
-        chamado.locatario = valores["locatario"]["value"]["value"]
-        chamado.moradores = valores["moradores"]["value"]["value"]
-        chamado.empreendimento = valores["empreendimento"]["value"]["value"]
-        chamado.unidade_metragem = valores["unidade_metragem"]["value"]["value"]
-        chamado.valor_locacao = float(valores["valor_locacao"]["value"]["value"].replace("R$", "").replace(".", "").replace(",", ".").strip())
-
+        chamado.tipo_contrato = tipo_contrato
+        chamado.locatario = locatario
+        chamado.moradores = moradores
+        chamado.empreendimento = empreendimento
+        chamado.unidade_metragem = unidade_metragem
+        chamado.valor_locacao = valor_locacao
         db.commit()
     db.close()
 
