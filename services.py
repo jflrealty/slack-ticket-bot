@@ -390,11 +390,25 @@ def capturar_chamado(client, body):
     user_id = body["user"]["id"]
     db = SessionLocal()
     chamado = db.query(OrdemServico).filter(OrdemServico.thread_ts == ts).first()
-    if chamado:
-        chamado.status = "em análise"
-        chamado.responsavel = user_id
-        chamado.data_captura = datetime.now()
-        db.commit()
+
+    if not chamado:
+        client.chat_postEphemeral(channel=body["channel"]["id"], user=user_id, text="❌ Chamado não encontrado.")
+        db.close()
+        return
+
+    if chamado.status != "aberto":
+        client.chat_postEphemeral(
+            channel=body["channel"]["id"],
+            user=user_id,
+            text=f"⚠️ O chamado já está em status *{chamado.status}*. Não é possível capturar."
+        )
+        db.close()
+        return
+
+    chamado.status = "em análise"
+    chamado.responsavel = user_id
+    chamado.data_captura = datetime.now()
+    db.commit()
     db.close()
 
     client.chat_postMessage(
@@ -409,10 +423,24 @@ def finalizar_chamado(client, body):
     user_id = body["user"]["id"]
     db = SessionLocal()
     chamado = db.query(OrdemServico).filter(OrdemServico.thread_ts == ts).first()
-    if chamado:
-        chamado.status = "fechado"
-        chamado.data_fechamento = datetime.now()
-        db.commit()
+
+    if not chamado:
+        client.chat_postEphemeral(channel=body["channel"]["id"], user=user_id, text="❌ Chamado não encontrado.")
+        db.close()
+        return
+
+    if chamado.status == "fechado":
+        client.chat_postEphemeral(
+            channel=body["channel"]["id"],
+            user=user_id,
+            text="⚠️ Esse chamado já está *fechado*. Nenhuma ação realizada."
+        )
+        db.close()
+        return
+
+    chamado.status = "fechado"
+    chamado.data_fechamento = datetime.now()
+    db.commit()
     db.close()
 
     client.chat_postMessage(
