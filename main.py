@@ -225,19 +225,20 @@ def handle_editar_chamado_submission(ack, body, view, client):
         chamado.unidade_metragem = unidade_metragem
         chamado.valor_locacao = valor_locacao
 
-        # Atualizar informações da edição
+         # Atualizar informações da edição
         chamado.data_ultima_edicao = datetime.now()
         chamado.ultimo_editor = nome_editor
-        chamado.log_edicoes = json.dumps({
+
+        log_edicoes = {
             "antes": antes,
             "depois": depois,
             "editado_por": nome_editor,
             "data_edicao": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        })
+        }
+
+        chamado.log_edicoes = json.dumps(log_edicoes)
 
         db.commit()
-
-    db.close()
 
     client.chat_postMessage(
         channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
