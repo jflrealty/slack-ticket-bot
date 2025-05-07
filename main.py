@@ -186,14 +186,40 @@ def handle_editar_chamado_submission(ack, body, view, client):
 
     db = SessionLocal()
     chamado = db.query(OrdemServico).filter(OrdemServico.thread_ts == ts).first()
-    if chamado:
-        chamado.tipo_contrato = tipo_contrato
-        chamado.locatario = locatario
-        chamado.moradores = moradores
-        chamado.empreendimento = empreendimento
-        chamado.unidade_metragem = unidade_metragem
-        chamado.valor_locacao = valor_locacao
+        if chamado:
+        from services import get_nome_slack
+        nome_real = get_nome_slack(user_id)
+
+        log = ""
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+        # Verifica e registra alterações
+        if chamado.tipo_contrato != tipo_contrato:
+            log += f"[{now}] {nome_real} alterou 'tipo_contrato' de '{chamado.tipo_contrato}' para '{tipo_contrato}'\n"
+            chamado.tipo_contrato = tipo_contrato
+        if chamado.locatario != locatario:
+            log += f"[{now}] {nome_real} alterou 'locatario' de '{chamado.locatario}' para '{locatario}'\n"
+            chamado.locatario = locatario
+        if chamado.moradores != moradores:
+            log += f"[{now}] {nome_real} alterou 'moradores' de '{chamado.moradores}' para '{moradores}'\n"
+            chamado.moradores = moradores
+        if chamado.empreendimento != empreendimento:
+            log += f"[{now}] {nome_real} alterou 'empreendimento' de '{chamado.empreendimento}' para '{empreendimento}'\n"
+            chamado.empreendimento = empreendimento
+        if chamado.unidade_metragem != unidade_metragem:
+            log += f"[{now}] {nome_real} alterou 'unidade_metragem' de '{chamado.unidade_metragem}' para '{unidade_metragem}'\n"
+            chamado.unidade_metragem = unidade_metragem
+        if chamado.valor_locacao != valor_locacao:
+            log += f"[{now}] {nome_real} alterou 'valor_locacao' de '{chamado.valor_locacao}' para '{valor_locacao}'\n"
+            chamado.valor_locacao = valor_locacao
+
+        if log:
+            chamado.ultimo_editor = nome_real
+            chamado.data_ultima_edicao = datetime.now()
+            chamado.log_edicoes = (chamado.log_edicoes or "") + log
+
         db.commit()
+
     db.close()
 
     client.chat_postMessage(
