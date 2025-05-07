@@ -250,7 +250,7 @@ def handle_exportar_chamado_command(ack, body, client):
         trigger_id=body["trigger_id"],
         view={
             "type": "modal",
-            "callback_id": "modal_exportacao_chamados",
+            "callback_id": "escolher_exportacao",
             "title": {"type": "plain_text", "text": "Exportar Chamados"},
             "submit": {"type": "plain_text", "text": "Exportar"},
             "private_metadata": body["user_id"],
