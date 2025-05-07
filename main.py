@@ -173,79 +173,95 @@ def handle_editar_chamado_submission(ack, body, view, client):
     user_id = body["user"]["id"]
     valores = view["state"]["values"]
 
-    # Extrair os dados
-    tipo_contrato = valores["tipo_contrato"]["value"]
-    locatario = valores["locatario"]["value"]
-    moradores = valores["moradores"]["value"]
-    empreendimento = valores["empreendimento"]["value"]
-    unidade_metragem = valores["unidade_metragem"]["value"]
-    valor_str = valores["valor_locacao"]["value"]
+   # Extrair os dados
+tipo_contrato = valores["tipo_contrato"]["value"]
+locatario = valores["locatario"]["value"]
+moradores = valores["moradores"]["value"]
+empreendimento = valores["empreendimento"]["value"]
+unidade_metragem = valores["unidade_metragem"]["value"]
+valor_str = valores["valor_locacao"]["value"]
 
+try:
+    valor_locacao = float(
+        valor_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
+    )
+except Exception:
+    valor_locacao = None
+
+# Obter nome real do usuário no Slack
+try:
+    nome_editor = client.users_info(user=user_id)["user"]["real_name"]
+except Exception:
+    nome_editor = user_id
+
+db = SessionLocal()
+chamado = db.query(OrdemServico).filter(OrdemServico.thread_ts == ts).first()
+
+if chamado:
+    # Criar log com o que foi alterado
+    antes = {
+        "tipo_contrato": chamado.tipo_contrato,
+        "locatario": chamado.locatario,
+        "moradores": chamado.moradores,
+        "empreendimento": chamado.empreendimento,
+        "unidade_metragem": chamado.unidade_metragem,
+        "valor_locacao": str(chamado.valor_locacao or ""),
+    }
+
+    depois = {
+        "tipo_contrato": tipo_contrato,
+        "locatario": locatario,
+        "moradores": moradores,
+        "empreendimento": empreendimento,
+        "unidade_metragem": unidade_metragem,
+        "valor_locacao": str(valor_locacao or ""),
+    }
+
+    # Atualizar campos
+    chamado.tipo_contrato = tipo_contrato
+    chamado.locatario = locatario
+    chamado.moradores = moradores
+    chamado.empreendimento = empreendimento
+    chamado.unidade_metragem = unidade_metragem
+    chamado.valor_locacao = valor_locacao
+
+    # Atualizar informações da edição
+    chamado.data_ultima_edicao = datetime.now()
+    chamado.ultimo_editor = nome_editor
+
+    # Carrega histórico existente, se houver
     try:
-        valor_locacao = float(
-            valor_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
-        )
+        historico = json.loads(chamado.log_edicoes or "[]")
     except Exception:
-        valor_locacao = None
+        historico = []
 
-    # Obter nome real do usuário no Slack
-    try:
-        nome_editor = client.users_info(user=user_id)["user"]["real_name"]
-    except Exception:
-        nome_editor = user_id
+    # Novo log
+    novo_log = {
+        "antes": antes,
+        "depois": depois,
+        "editado_por": nome_editor,
+        "data_edicao": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
 
-    db = SessionLocal()
-    chamado = db.query(OrdemServico).filter(OrdemServico.thread_ts == ts).first()
+    historico.append(novo_log)
+    chamado.log_edicoes = json.dumps(historico)
 
-    if chamado:
-        # Criar log com o que foi alterado
-        antes = {
-            "tipo_contrato": chamado.tipo_contrato,
-            "locatario": chamado.locatario,
-            "moradores": chamado.moradores,
-            "empreendimento": chamado.empreendimento,
-            "unidade_metragem": chamado.unidade_metragem,
-            "valor_locacao": str(chamado.valor_locacao or ""),
-        }
-
-        depois = {
-            "tipo_contrato": tipo_contrato,
-            "locatario": locatario,
-            "moradores": moradores,
-            "empreendimento": empreendimento,
-            "unidade_metragem": unidade_metragem,
-            "valor_locacao": str(valor_locacao or ""),
-        }
-
-        # Aplicar as edições
-        chamado.tipo_contrato = tipo_contrato
-        chamado.locatario = locatario
-        chamado.moradores = moradores
-        chamado.empreendimento = empreendimento
-        chamado.unidade_metragem = unidade_metragem
-        chamado.valor_locacao = valor_locacao
-
-         # Atualizar informações da edição
-        chamado.data_ultima_edicao = datetime.now()
-        chamado.ultimo_editor = nome_editor
-
-        log_edicoes = {
-            "antes": antes,
-            "depois": depois,
-            "editado_por": nome_editor,
-            "data_edicao": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-
-        chamado.log_edicoes = json.dumps(log_edicoes)
-
-        db.commit()
+    db.commit()
+    db.close()
 
     client.chat_postMessage(
         channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
         thread_ts=ts,
         text=f"✏️ Chamado editado por <@{user_id}> com sucesso."
     )
-
+else:
+    db.close()
+    client.chat_postEphemeral(
+        channel=user_id,
+        user=user_id,
+        text="❌ Não foi possível editar. Chamado não encontrado."
+    )
+    
 # ❌ Cancelar chamado (grava motivo no banco)
 @app.view("cancelar_chamado_modal")
 def handle_cancelar_modal_submission(ack, body, view, client):
