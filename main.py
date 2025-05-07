@@ -15,6 +15,7 @@ import os
 import threading
 import time
 from datetime import datetime
+import json
 from dotenv import load_dotenv
 
 # 🔐 Carregar variáveis de ambiente
@@ -172,52 +173,67 @@ def handle_editar_chamado_submission(ack, body, view, client):
     user_id = body["user"]["id"]
     valores = view["state"]["values"]
 
+    # Extrair os dados
     tipo_contrato = valores["tipo_contrato"]["value"]
     locatario = valores["locatario"]["value"]
     moradores = valores["moradores"]["value"]
     empreendimento = valores["empreendimento"]["value"]
     unidade_metragem = valores["unidade_metragem"]["value"]
-    valor_str = valores.get("valor_locacao", {}).get("value", {}).get("value", "")
+    valor_str = valores["valor_locacao"]["value"]
+
     try:
         valor_locacao = float(
-        valor_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
+            valor_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
         )
-    except ValueError:
+    except Exception:
         valor_locacao = None
+
+    # Obter nome real do usuário no Slack
+    try:
+        nome_editor = client.users_info(user=user_id)["user"]["real_name"]
+    except Exception:
+        nome_editor = user_id
 
     db = SessionLocal()
     chamado = db.query(OrdemServico).filter(OrdemServico.thread_ts == ts).first()
 
     if chamado:
-        from services import get_nome_slack
-        nome_real = get_nome_slack(user_id)
+        # Criar log com o que foi alterado
+        antes = {
+            "tipo_contrato": chamado.tipo_contrato,
+            "locatario": chamado.locatario,
+            "moradores": chamado.moradores,
+            "empreendimento": chamado.empreendimento,
+            "unidade_metragem": chamado.unidade_metragem,
+            "valor_locacao": str(chamado.valor_locacao or ""),
+        }
 
-        log = ""
-        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        depois = {
+            "tipo_contrato": tipo_contrato,
+            "locatario": locatario,
+            "moradores": moradores,
+            "empreendimento": empreendimento,
+            "unidade_metragem": unidade_metragem,
+            "valor_locacao": str(valor_locacao or ""),
+        }
 
-        if chamado.tipo_contrato != tipo_contrato:
-            log += f"[{now}] {nome_real} alterou 'tipo_contrato' de '{chamado.tipo_contrato}' para '{tipo_contrato}'\n"
-            chamado.tipo_contrato = tipo_contrato
-        if chamado.locatario != locatario:
-            log += f"[{now}] {nome_real} alterou 'locatario' de '{chamado.locatario}' para '{locatario}'\n"
-            chamado.locatario = locatario
-        if chamado.moradores != moradores:
-            log += f"[{now}] {nome_real} alterou 'moradores' de '{chamado.moradores}' para '{moradores}'\n"
-            chamado.moradores = moradores
-        if chamado.empreendimento != empreendimento:
-            log += f"[{now}] {nome_real} alterou 'empreendimento' de '{chamado.empreendimento}' para '{empreendimento}'\n"
-            chamado.empreendimento = empreendimento
-        if chamado.unidade_metragem != unidade_metragem:
-            log += f"[{now}] {nome_real} alterou 'unidade_metragem' de '{chamado.unidade_metragem}' para '{unidade_metragem}'\n"
-            chamado.unidade_metragem = unidade_metragem
-        if chamado.valor_locacao != valor_locacao:
-            log += f"[{now}] {nome_real} alterou 'valor_locacao' de '{chamado.valor_locacao}' para '{valor_locacao}'\n"
-            chamado.valor_locacao = valor_locacao
+        # Aplicar as edições
+        chamado.tipo_contrato = tipo_contrato
+        chamado.locatario = locatario
+        chamado.moradores = moradores
+        chamado.empreendimento = empreendimento
+        chamado.unidade_metragem = unidade_metragem
+        chamado.valor_locacao = valor_locacao
 
-        if log:
-            chamado.ultimo_editor = nome_real
-            chamado.data_ultima_edicao = datetime.now()
-            chamado.log_edicoes = (chamado.log_edicoes or "") + log
+        # Atualizar informações da edição
+        chamado.data_ultima_edicao = datetime.now()
+        chamado.ultimo_editor = nome_editor
+        chamado.log_edicoes = json.dumps({
+            "antes": antes,
+            "depois": depois,
+            "editado_por": nome_editor,
+            "data_edicao": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
 
         db.commit()
 
