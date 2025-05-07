@@ -177,11 +177,10 @@ def handle_editar_chamado_submission(ack, body, view, client):
     moradores = valores["moradores"]["value"]
     empreendimento = valores["empreendimento"]["value"]
     unidade_metragem = valores["unidade_metragem"]["value"]
-    valor_str = valores["valor_locacao"]["value"]
-
+    valor_str = valores.get("valor_locacao", {}).get("value", {}).get("value", "")
     try:
         valor_locacao = float(
-            valor_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
+        valor_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
         )
     except ValueError:
         valor_locacao = None
