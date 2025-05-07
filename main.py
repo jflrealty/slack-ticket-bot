@@ -129,6 +129,11 @@ def handle_editar_chamado(ack, body, client):
     ts = body["message"]["ts"]
     services.abrir_modal_edicao(client, body["trigger_id"], ts)
 
+# ❌ Cancelar chamado
+@app.action("cancelar_chamado")
+def handle_cancelar_chamado(ack, body, client):
+    ack()
+    ts = body["message"]["ts"]
     client.views_open(
         trigger_id=body["trigger_id"],
         view={
@@ -153,11 +158,13 @@ def handle_editar_chamado(ack, body, client):
         }
     )
 
+# ♻️ Reabrir chamado
 @app.view("reabrir_chamado_modal")
 def handle_reabrir_modal_submission(ack, body, view, client):
     ack()
     services.reabrir_chamado(client, body, view)
 
+# 💾 Salvar edição do chamado
 @app.view("editar_chamado_modal")
 def handle_editar_chamado_submission(ack, body, view, client):
     ack()
@@ -165,12 +172,12 @@ def handle_editar_chamado_submission(ack, body, view, client):
     user_id = body["user"]["id"]
     valores = view["state"]["values"]
 
-    tipo_contrato = valores["tipo_contrato"]["value"]
-    locatario = valores["locatario"]["value"]
-    moradores = valores["moradores"]["value"]
-    empreendimento = valores["empreendimento"]["value"]
-    unidade_metragem = valores["unidade_metragem"]["value"]
-    valor_str = valores["valor_locacao"]["value"]
+    tipo_contrato = valores["tipo_contrato"]["value"]["value"]
+    locatario = valores["locatario"]["value"]["value"]
+    moradores = valores["moradores"]["value"]["value"]
+    empreendimento = valores["empreendimento"]["value"]["value"]
+    unidade_metragem = valores["unidade_metragem"]["value"]["value"]
+    valor_str = valores["valor_locacao"]["value"]["value"]
 
     try:
         valor_locacao = float(valor_str.replace("R$", "").replace(".", "").replace(",", ".").strip())
@@ -195,6 +202,7 @@ def handle_editar_chamado_submission(ack, body, view, client):
         text=f"✏️ Chamado editado por <@{user_id}> com sucesso."
     )
 
+# ❌ Cancelar chamado (grava motivo no banco)
 @app.view("cancelar_chamado_modal")
 def handle_cancelar_modal_submission(ack, body, view, client):
     ack()
@@ -216,23 +224,7 @@ def handle_cancelar_modal_submission(ack, body, view, client):
         thread_ts=ts,
         text=f"❌ Chamado cancelado por <@{user_id}>!\n*Motivo:* {motivo}"
     )
-
-# 📤 Comando exportar chamado
-@app.command("/exportar-chamado")
-def handle_exportar_command(ack, body, client):
-    ack()
-    client.views_open(
-        trigger_id=body["trigger_id"],
-        view={
-            "type": "modal",
-            "callback_id": "escolher_exportacao",
-            "title": {"type": "plain_text", "text": "Exportar Chamados"},
-            "submit": {"type": "plain_text", "text": "Exportar"},
-            "close": {"type": "plain_text", "text": "Cancelar"},
-            "blocks": services.montar_blocos_exportacao()
-        }
-    )
-
+    
 @app.view("escolher_exportacao")
 def exportar_chamados_handler(ack, body, view, client):
     ack()
