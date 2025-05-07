@@ -172,28 +172,30 @@ def handle_editar_chamado_submission(ack, body, view, client):
     user_id = body["user"]["id"]
     valores = view["state"]["values"]
 
-    tipo_contrato = valores["tipo_contrato"]["value"]["value"]
-    locatario = valores["locatario"]["value"]["value"]
-    moradores = valores["moradores"]["value"]["value"]
-    empreendimento = valores["empreendimento"]["value"]["value"]
-    unidade_metragem = valores["unidade_metragem"]["value"]["value"]
-    valor_str = valores["valor_locacao"]["value"]["value"]
+    tipo_contrato = valores["tipo_contrato"]["value"]
+    locatario = valores["locatario"]["value"]
+    moradores = valores["moradores"]["value"]
+    empreendimento = valores["empreendimento"]["value"]
+    unidade_metragem = valores["unidade_metragem"]["value"]
+    valor_str = valores["valor_locacao"]["value"]
 
     try:
-        valor_locacao = float(valor_str.replace("R$", "").replace(".", "").replace(",", ".").strip())
+        valor_locacao = float(
+            valor_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
+        )
     except ValueError:
         valor_locacao = None
 
     db = SessionLocal()
     chamado = db.query(OrdemServico).filter(OrdemServico.thread_ts == ts).first()
-        if chamado:
+
+    if chamado:
         from services import get_nome_slack
         nome_real = get_nome_slack(user_id)
 
         log = ""
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-        # Verifica e registra alterações
         if chamado.tipo_contrato != tipo_contrato:
             log += f"[{now}] {nome_real} alterou 'tipo_contrato' de '{chamado.tipo_contrato}' para '{tipo_contrato}'\n"
             chamado.tipo_contrato = tipo_contrato
