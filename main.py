@@ -138,7 +138,8 @@ def handle_editar_submit(ack, body, view, client):
     user_id = body["user"]["id"]
     valores = view["state"]["values"]
 
-    def pegar_valor(campo): return valores[campo]["value"]
+    def pegar_valor(campo):
+        return list(valores[campo].values())[0]["value"]
 
     tipo_contrato = pegar_valor("tipo_contrato")
     locatario = pegar_valor("locatario")
@@ -146,8 +147,11 @@ def handle_editar_submit(ack, body, view, client):
     empreendimento = pegar_valor("empreendimento")
     unidade_metragem = pegar_valor("unidade_metragem")
     valor_str = pegar_valor("valor_locacao")
+
     try:
-        valor_locacao = float(valor_str.replace("R$", "").replace(".", "").replace(",", ".").strip())
+        valor_locacao = float(
+            valor_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
+        )
     except Exception:
         valor_locacao = None
 
@@ -198,13 +202,21 @@ def handle_editar_submit(ack, body, view, client):
             "data_edicao": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
 
-        chamado.log_edicoes = json.dumps(historico)
+        chamado.log_edicoes = json.dumps(historico)  # ← Aqui garantimos que é string
+
         db.commit()
         client.chat_postMessage(
             channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
             thread_ts=ts,
             text=f"✏️ Chamado editado por <@{user_id}> com sucesso."
         )
+    else:
+        client.chat_postEphemeral(
+            channel=user_id,
+            user=user_id,
+            text="❌ Não foi possível editar. Chamado não encontrado."
+        )
+
     db.close()
 
 # 📤 Exportar chamados
