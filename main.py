@@ -243,6 +243,59 @@ def exportar_chamados_handler(ack, body, view, client):
     else:
         services.enviar_relatorio(client, user_id, data_inicio, data_fim)
 
+@app.command("/exportar-chamado")
+def handle_exportar_chamado_command(ack, body, client):
+    ack()
+    client.views_open(
+        trigger_id=body["trigger_id"],
+        view={
+            "type": "modal",
+            "callback_id": "modal_exportacao_chamados",
+            "title": {"type": "plain_text", "text": "Exportar Chamados"},
+            "submit": {"type": "plain_text", "text": "Exportar"},
+            "private_metadata": body["user_id"],
+            "blocks": montar_blocos_exportacao()
+        }
+    )
+
+def montar_blocos_exportacao():
+    return [
+        {
+            "type": "input",
+            "block_id": "tipo_arquivo",
+            "label": {"type": "plain_text", "text": "Formato do Arquivo"},
+            "element": {
+                "type": "static_select",
+                "action_id": "value",
+                "placeholder": {"type": "plain_text", "text": "Escolha o formato"},
+                "options": [
+                    {"text": {"type": "plain_text", "text": "PDF"}, "value": "pdf"},
+                    {"text": {"type": "plain_text", "text": "CSV"}, "value": "csv"}
+                ]
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "data_inicio",
+            "label": {"type": "plain_text", "text": "Data Inicial"},
+            "element": {
+                "type": "datepicker",
+                "action_id": "value",
+                "placeholder": {"type": "plain_text", "text": "Escolha a data inicial"}
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "data_fim",
+            "label": {"type": "plain_text", "text": "Data Final"},
+            "element": {
+                "type": "datepicker",
+                "action_id": "value",
+                "placeholder": {"type": "plain_text", "text": "Escolha a data final"}
+            }
+        }
+    ]
+
 # 📋 Comando listar meus chamados
 @app.command("/meus-chamados")
 def handle_meus_chamados(ack, body, client):
