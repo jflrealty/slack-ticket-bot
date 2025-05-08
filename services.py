@@ -505,11 +505,16 @@ def abrir_modal_edicao(client, trigger_id, thread_ts):
                     "type": "input",
                     "block_id": "tipo_contrato",
                     "element": {
-                        "type": "plain_text_input",
-                        "action_id": "value",
-                        "initial_value": chamado.tipo_contrato
-                    },
-                    "label": {"type": "plain_text", "text": "Tipo de Contrato"}
+                        "type": "static_select",
+                        "placeholder": {"type": "plain_text", "text": "Escolha"},
+                        "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
+                                    for opt in ["Short Stay", "Temporada", "Long Stay", "Comodato"]],
+                        "initial_option": {
+                            "text": {"type": "plain_text", "text": chamado.tipo_contrato},
+                            "value": chamado.tipo_contrato
+                    } if chamado.tipo_contrato else None
+                },
+                "label": {"type": "plain_text", "text": "Tipo de Contrato"}
                 },
                 {
                     "type": "input",
@@ -535,11 +540,17 @@ def abrir_modal_edicao(client, trigger_id, thread_ts):
                     "type": "input",
                     "block_id": "empreendimento",
                     "element": {
-                        "type": "plain_text_input",
+                        "type": "static_select",
                         "action_id": "value",
-                        "initial_value": chamado.empreendimento
-                    },
-                    "label": {"type": "plain_text", "text": "Empreendimento"}
+                        "placeholder": {"type": "plain_text", "text": "Escolha"},
+                        "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
+                                    for opt in ["JFL125", "JML747", "VO699", "VHOUSE", "AVNU"]],
+                        "initial_option": {
+                        "text": {"type": "plain_text", "text": chamado.empreendimento},
+                        "value": chamado.empreendimento
+                    } if chamado.empreendimento else None
+                },
+                        "label": {"type": "plain_text", "text": "Empreendimento"}
                 },
                 {
                     "type": "input",
