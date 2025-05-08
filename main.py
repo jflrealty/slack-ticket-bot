@@ -219,6 +219,13 @@ def handle_editar_submit(ack, body, view, client):
 
     db.close()
 
+# 📋 Comando listar meus chamados
+@app.command("/meus-chamados")
+def handle_meus_chamados(ack, body, client):
+    ack()
+    user_id = body["user_id"]
+    services.exibir_lista(client, user_id)
+
 # 📤 Exportar chamados
 @app.command("/exportar-chamado")
 def handle_exportar_command(ack, body, client):
