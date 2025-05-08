@@ -172,6 +172,7 @@ def handle_editar_submit(ack, body, view, client):
     db = SessionLocal()
     chamado = db.query(OrdemServico).filter_by(thread_ts=ts).first()
     if chamado:
+        tipo_ticket = chamado.tipo_ticket
         antes = {
             "tipo_contrato": chamado.tipo_contrato,
             "locatario": chamado.locatario,
