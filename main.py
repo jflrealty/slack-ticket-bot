@@ -208,14 +208,21 @@ def handle_editar_submit(ack, body, view, client):
         except Exception:
             historico = []
 
-        historico.append({
-            "antes": antes,
-            "depois": depois,
-            "editado_por": nome_editor,
-            "data_edicao": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        })
+def serializar_valores(d):
+    return {
+        k: (v.strftime("%Y-%m-%d") if isinstance(v, (datetime, datetime.date)) else v)
+        for k, v in d.items()
+    }
 
-        chamado.log_edicoes = json.dumps(historico)
+log = {
+    "antes": serializar_valores(antes),
+    "depois": serializar_valores(depois),
+    "editado_por": nome_editor,
+    "data_edicao": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+}
+
+chamado.log_edicoes = json.dumps(historico + [log])
+
 
         mensagem_atualizada = services.formatar_mensagem_chamado(depois, user_id)
 
