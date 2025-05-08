@@ -125,6 +125,38 @@ def montar_blocos_modal():
         }
     ]
 
+from datetime import datetime
+
+def formatar_mensagem_chamado(data, user_id):
+    def formatar(valor):
+        return valor if valor else "–"
+
+    valor_formatado = ""
+    if isinstance(data.get("valor_locacao"), (int, float)):
+        valor_formatado = f"R$ {data['valor_locacao']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    elif isinstance(data.get("valor_locacao"), str):
+        try:
+            valor = float(data["valor_locacao"].replace("R$", "").replace(".", "").replace(",", ".").strip())
+            valor_formatado = f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        except:
+            valor_formatado = formatar(data.get("valor_locacao"))
+    else:
+        valor_formatado = "–"
+
+    return (
+        f"*Tipo:* {formatar(data.get('tipo_ticket'))}\n"
+        f"*Contrato:* {formatar(data.get('tipo_contrato'))}\n"
+        f"*Locatário:* {formatar(data.get('locatario'))}\n"
+        f"*Moradores:* {formatar(data.get('moradores'))}\n"
+        f"*Empreendimento:* {formatar(data.get('empreendimento'))}\n"
+        f"*Unidade:* {formatar(data.get('unidade_metragem'))}\n"
+        f"*Entrada:* {formatar(data.get('data_entrada'))}\n"
+        f"*Saída:* {formatar(data.get('data_saida'))}\n"
+        f"*Valor:* {valor_formatado}\n"
+        f"*Responsável:* <@{data.get('responsavel')}>\n"
+        f"*Solicitante:* <@{user_id}>"
+    )
+
 # 🧾 Criar novo chamado
 def criar_ordem_servico(data, thread_ts, canal_id):
     from database import SessionLocal
