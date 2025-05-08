@@ -363,20 +363,33 @@ def lembrar_chamados_vencidos(client):
 
 # 📄 Formatar mensagem bonitinha
 def formatar_mensagem_chamado(data, user_id):
-    valor_formatado = f"R$ {data['valor_locacao']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    try:
+        valor_float = float(data.get("valor_locacao") or 0)
+        valor_formatado = f"R$ {valor_float:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except Exception:
+        valor_formatado = "N/A"
+
+    data_entrada = data.get("data_entrada")
+    data_saida = data.get("data_saida")
+
+    data_entrada_str = (
+        data_entrada.strftime("%d/%m/%Y") if hasattr(data_entrada, "strftime") else str(data_entrada or "N/A")
+    )
+    data_saida_str = (
+        data_saida.strftime("%d/%m/%Y") if hasattr(data_saida, "strftime") else str(data_saida or "N/A")
+    )
+
     return (
-        "📄 *Detalhes do Chamado:*\n"
-        f"• *Tipo de Ticket:* {data['tipo_ticket']}\n"
-        f"• *Tipo de Contrato:* {data['tipo_contrato']}\n"
-        f"• *Locatário:* {data['locatario']}\n"
-        f"• *Moradores:* {data['moradores']}\n"
-        f"• *Empreendimento:* {data['empreendimento']}\n"
-        f"• *Unidade e Metragem:* {data['unidade_metragem']}\n"
-        f"• *Data de Entrada:* {data['data_entrada'].strftime('%Y-%m-%d') if data['data_entrada'] else '–'}\n"
-        f"• *Data de Saída:* {data['data_saida'].strftime('%Y-%m-%d') if data['data_saida'] else '–'}\n"
-        f"• *Valor da Locação:* {valor_formatado}\n"
-        f"• *Responsável:* <@{data['responsavel']}>\n"
-        f"• *Solicitante:* <@{user_id}>"
+        f"*📌 Tipo de Contrato:* {data.get('tipo_contrato', 'N/A')}\n"
+        f"*👤 Locatário:* {data.get('locatario', 'N/A')}\n"
+        f"*🧍 Moradores:* {data.get('moradores', 'N/A')}\n"
+        f"*🏢 Empreendimento:* {data.get('empreendimento', 'N/A')}\n"
+        f"*📏 Unidade:* {data.get('unidade_metragem', 'N/A')}\n"
+        f"*💰 Valor da Locação:* {valor_formatado}\n"
+        f"*📅 Entrada:* {data_entrada_str}\n"
+        f"*📅 Saída:* {data_saida_str}\n"
+        f"*🔧 Responsável:* <@{data.get('responsavel_id', 'N/A')}>\n"
+        f"*🙋 Solicitante:* <@{user_id}>"
     )
 
 from database import SessionLocal
