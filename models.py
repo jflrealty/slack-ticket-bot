@@ -34,3 +34,4 @@ class OrdemServico(Base):
     data_ultima_edicao = Column(TIMESTAMP, nullable=True)
     ultimo_editor = Column(String, nullable=True)
     log_edicoes = Column(Text, default="")
+    canal_id = Column(Text, nullable=True)  # ✅ Canal do Slack onde o chamado foi aberto
