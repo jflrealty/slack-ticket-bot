@@ -149,7 +149,6 @@ def handle_editar_submit(ack, body, view, client):
         return list(valores[campo].values())[0].get("selected_option", {}).get("value") or \
                list(valores[campo].values())[0].get("value")
 
-    tipo_ticket = pegar_valor("tipo_ticket") or "Chamado"  # se não for editável, use o original
     tipo_contrato = pegar_valor("tipo_contrato")
     locatario = pegar_valor("locatario")
     moradores = pegar_valor("moradores")
