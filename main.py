@@ -145,14 +145,11 @@ def handle_editar_submit(ack, body, view, client):
     user_id = body["user"]["id"]
     valores = view["state"]["values"]
 
-def pegar_valor(campo):
-    item = list(valores[campo].values())[0]
-    if item["type"] == "plain_text_input":
-        return item.get("value")
-    elif item["type"] == "static_select":
-        return item.get("selected_option", {}).get("value")
-    return None
+    def pegar_valor(campo):
+        return list(valores[campo].values())[0].get("selected_option", {}).get("value") or \
+               list(valores[campo].values())[0].get("value")
 
+    tipo_ticket = pegar_valor("tipo_ticket") or "Chamado"  # se não for editável, use o original
     tipo_contrato = pegar_valor("tipo_contrato")
     locatario = pegar_valor("locatario")
     moradores = pegar_valor("moradores")
@@ -161,7 +158,9 @@ def pegar_valor(campo):
     valor_str = pegar_valor("valor_locacao")
 
     try:
-        valor_locacao = float(valor_str.replace("R$", "").replace(".", "").replace(",", ".").strip())
+        valor_locacao = float(
+            valor_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
+        )
     except Exception:
         valor_locacao = None
 
@@ -179,16 +178,20 @@ def pegar_valor(campo):
             "moradores": chamado.moradores,
             "empreendimento": chamado.empreendimento,
             "unidade_metragem": chamado.unidade_metragem,
-            "valor_locacao": str(chamado.valor_locacao or "")
+            "valor_locacao": str(chamado.valor_locacao or ""),
         }
 
         depois = {
+            "tipo_ticket": tipo_ticket,
             "tipo_contrato": tipo_contrato,
             "locatario": locatario,
             "moradores": moradores,
             "empreendimento": empreendimento,
             "unidade_metragem": unidade_metragem,
-            "valor_locacao": str(valor_locacao or "")
+            "valor_locacao": valor_locacao,
+            "responsavel": chamado.responsavel,
+            "data_entrada": chamado.data_entrada,
+            "data_saida": chamado.data_saida,
         }
 
         chamado.tipo_contrato = tipo_contrato
@@ -219,13 +222,13 @@ def pegar_valor(campo):
         client.chat_update(
             channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
             ts=ts,
-            text=f"🆕 ({locatario}) Chamado atualizado por <@{user_id}>: *{chamado.tipo_ticket}*",
+            text=f"🆕 ({locatario}) Chamado atualizado por <@{user_id}>: *{tipo_ticket}*",
             blocks=[
                 {
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"🆕 (*{locatario}*) Chamado atualizado por <@{user_id}>: *{chamado.tipo_ticket}*"
+                        "text": f"🆕 (*{locatario}*) Chamado atualizado por <@{user_id}>: *{tipo_ticket}*"
                     }
                 },
                 {
@@ -240,15 +243,13 @@ def pegar_valor(campo):
                 },
                 {
                     "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": mensagem_atualizada
-                    }
+                    "text": {"type": "mrkdwn", "text": mensagem_atualizada}
                 }
             ]
         )
 
         db.commit()
+
         client.chat_postMessage(
             channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
             thread_ts=ts,
@@ -260,6 +261,7 @@ def pegar_valor(campo):
             user=user_id,
             text="❌ Não foi possível editar. Chamado não encontrado."
         )
+
     db.close()
 
 # 📋 Comando listar meus chamados
