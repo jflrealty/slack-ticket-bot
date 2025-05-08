@@ -145,8 +145,13 @@ def handle_editar_submit(ack, body, view, client):
     user_id = body["user"]["id"]
     valores = view["state"]["values"]
 
-    def pegar_valor(campo):
-        return list(valores[campo].values())[0]["value"]
+def pegar_valor(campo):
+    item = list(valores[campo].values())[0]
+    if item["type"] == "plain_text_input":
+        return item.get("value")
+    elif item["type"] == "static_select":
+        return item.get("selected_option", {}).get("value")
+    return None
 
     tipo_contrato = pegar_valor("tipo_contrato")
     locatario = pegar_valor("locatario")
