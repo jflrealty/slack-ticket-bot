@@ -223,8 +223,7 @@ log = {
 
 chamado.log_edicoes = json.dumps(historico + [log])
 
-
-        mensagem_atualizada = services.formatar_mensagem_chamado(depois, user_id)
+mensagem_atualizada = services.formatar_mensagem_chamado(depois, user_id)
 
         client.chat_update(
             channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
