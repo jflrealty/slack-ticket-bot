@@ -118,7 +118,7 @@ def handle_cancelar_submit(ack, body, view, client):
         chamado.status = "cancelado"
         chamado.motivo_cancelamento = motivo
         chamado.data_fechamento = datetime.now()
-        db.commit()
+     db.commit()
         client.chat_postMessage(
             channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
             thread_ts=ts,
@@ -240,6 +240,7 @@ client.chat_update(
 )
         
         db.commit()
+        
         client.chat_postMessage(
             channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
             thread_ts=ts,
