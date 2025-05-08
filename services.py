@@ -126,37 +126,41 @@ def montar_blocos_modal():
     ]
 
 # 🧾 Criar novo chamado
-def criar_ordem_servico(data, thread_ts=None):
-    session = SessionLocal()
+def criar_ordem_servico(data, thread_ts, canal_id):
+    from database import SessionLocal
+    from models import OrdemServico
+    from datetime import datetime
+
+    db = SessionLocal()
     try:
-        sla_prazo = datetime.utcnow() + timedelta(hours=24)
-        nova_os = OrdemServico(
-            tipo_ticket=data["tipo_ticket"],
-            tipo_contrato=data["tipo_contrato"],
-            locatario=data["locatario"],
-            moradores=data["moradores"],
-            empreendimento=data["empreendimento"],
-            unidade_metragem=data["unidade_metragem"],
-            data_entrada=data["data_entrada"],
-            data_saida=data["data_saida"],
-            valor_locacao=data["valor_locacao"],
-            responsavel=data["responsavel"],
-            solicitante=data["solicitante"],
+        nova_ordem = OrdemServico(
+            tipo_ticket=data.get("tipo_ticket"),
+            tipo_contrato=data.get("tipo_contrato"),
+            locatario=data.get("locatario"),
+            moradores=data.get("moradores"),
+            empreendimento=data.get("empreendimento"),
+            unidade_metragem=data.get("unidade_metragem"),
+            data_entrada=data.get("data_entrada"),
+            data_saida=data.get("data_saida"),
+            valor_locacao=data.get("valor_locacao"),
+            responsavel=data.get("responsavel"),
+            solicitante=data.get("solicitante"),
             status="aberto",
-            data_abertura=datetime.utcnow(),
-            sla_limite=sla_prazo,
+            responsavel_id=data.get("responsavel_id"),
+            data_abertura=datetime.now(),
+            sla_limite=data.get("sla_limite"),
             sla_status="dentro do prazo",
-            thread_ts=thread_ts
+            thread_ts=thread_ts,
+            canal_id=canal_id  # <- salva aqui o canal real
         )
-        session.add(nova_os)
-        session.commit()
-        session.refresh(nova_os)
+
+        db.add(nova_ordem)
+        db.commit()
     except Exception as e:
         print("❌ Erro ao salvar no banco:", e)
-        session.rollback()
+        db.rollback()
     finally:
-        session.close()
-    return nova_os
+        db.close()
 
 # Buscar chamados
 def buscar_chamados(data_inicio=None, data_fim=None):
