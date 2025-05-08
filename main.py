@@ -51,23 +51,40 @@ def handle_modal_submission(ack, body, view, client):
     data["data_saida"] = datetime.strptime(data["data_saida"], "%Y-%m-%d") if data.get("data_saida") else None
     data["valor_locacao"] = float(data["valor_locacao"].replace("R$", "").replace(".", "").replace(",", ".").strip()) if data.get("valor_locacao") else None
 
-    response = client.chat_postMessage(
-        channel=canal,
-        text=f"🆕 ({data['locatario']}) Novo chamado aberto por <@{user}>: *{data['tipo_ticket']}*",
-        blocks=[
-            {"type": "section", "text": {"type": "mrkdwn", "text": f"🆕 (*{data['locatario']}*) Novo chamado aberto por <@{user}>: *{data['tipo_ticket']}*"}},
-            {"type": "actions", "elements": [
+response = client.chat_postMessage(
+    channel=canal,
+    text=f"🆕 ({data['locatario']}) Novo chamado aberto por <@{user}>: *{data['tipo_ticket']}*",
+    blocks=[
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"🆕 (*{data['locatario']}*) Novo chamado aberto por <@{user}>: *{data['tipo_ticket']}*"
+            }
+        },
+        {
+            "type": "actions",
+            "elements": [
                 {"type": "button", "text": {"type": "plain_text", "text": "🔄 Capturar"}, "action_id": "capturar_chamado"},
                 {"type": "button", "text": {"type": "plain_text", "text": "✅ Finalizar"}, "action_id": "finalizar_chamado"},
                 {"type": "button", "text": {"type": "plain_text", "text": "♻️ Reabrir"}, "action_id": "reabrir_chamado"},
                 {"type": "button", "text": {"type": "plain_text", "text": "❌ Cancelar"}, "action_id": "cancelar_chamado"},
                 {"type": "button", "text": {"type": "plain_text", "text": "✏️ Editar"}, "action_id": "editar_chamado"}
-            ]}
-        ]
-    )
-    thread_ts = response["ts"]
-    services.criar_ordem_servico(data, thread_ts)
-    client.chat_postMessage(channel=canal, thread_ts=thread_ts, text=services.formatar_mensagem_chamado(data, user))
+            ]
+        }
+    ]
+)
+thread_ts = response["ts"]
+canal_id = response["channel"]
+
+# Criação com canal_id agora incluído
+services.criar_ordem_servico(data, thread_ts, canal_id)
+
+client.chat_postMessage(
+    channel=canal,
+    thread_ts=thread_ts,
+    text=services.formatar_mensagem_chamado(data, user)
+)
 
 # 🎯 Ações de Botões
 @app.action("capturar_chamado")
@@ -223,7 +240,7 @@ def handle_editar_submit(ack, body, view, client):
         mensagem_atualizada = services.formatar_mensagem_chamado(depois, user_id)
 
         client.chat_update(
-            channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
+            channel=chamado.canal_id,
             ts=ts,
             text=f"🆕 ({locatario}) Chamado atualizado por <@{user_id}>: *{chamado.tipo_ticket}*",
             blocks=[
