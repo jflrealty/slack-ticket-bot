@@ -146,8 +146,15 @@ def handle_editar_submit(ack, body, view, client):
     valores = view["state"]["values"]
 
     def pegar_valor(campo):
-        return list(valores[campo].values())[0].get("selected_option", {}).get("value") or \
-               list(valores[campo].values())[0].get("value")
+        bloco = valores.get(campo, {})
+        if not bloco:
+            return ""
+        item = list(bloco.values())[0]
+        return (
+            item.get("selected_option", {}).get("value")
+            or item.get("value")
+            or ""
+        )
 
     tipo_contrato = pegar_valor("tipo_contrato")
     locatario = pegar_valor("locatario")
@@ -171,7 +178,6 @@ def handle_editar_submit(ack, body, view, client):
     db = SessionLocal()
     chamado = db.query(OrdemServico).filter_by(thread_ts=ts).first()
     if chamado:
-        tipo_ticket = chamado.tipo_ticket
         antes = {
             "tipo_contrato": chamado.tipo_contrato,
             "locatario": chamado.locatario,
@@ -182,16 +188,12 @@ def handle_editar_submit(ack, body, view, client):
         }
 
         depois = {
-            "tipo_ticket": tipo_ticket,
             "tipo_contrato": tipo_contrato,
             "locatario": locatario,
             "moradores": moradores,
             "empreendimento": empreendimento,
             "unidade_metragem": unidade_metragem,
-            "valor_locacao": valor_locacao,
-            "responsavel": chamado.responsavel,
-            "data_entrada": chamado.data_entrada,
-            "data_saida": chamado.data_saida,
+            "valor_locacao": str(valor_locacao or ""),
         }
 
         chamado.tipo_contrato = tipo_contrato
@@ -208,22 +210,17 @@ def handle_editar_submit(ack, body, view, client):
         except Exception:
             historico = []
 
-def serializar_valores(d):
-    return {
-        k: (v.strftime("%Y-%m-%d") if isinstance(v, (datetime, datetime.date)) else v)
-        for k, v in d.items()
-    }
+        historico.append({
+            "antes": antes,
+            "depois": depois,
+            "editado_por": nome_editor,
+            "data_edicao": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
 
-log = {
-    "antes": serializar_valores(antes),
-    "depois": serializar_valores(depois),
-    "editado_por": nome_editor,
-    "data_edicao": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-}
+        chamado.log_edicoes = json.dumps(historico, default=str)
 
-chamado.log_edicoes = json.dumps(historico + [log])
-
-mensagem_atualizada = services.formatar_mensagem_chamado(depois, user_id)
+        # Atualiza mensagem principal da thread
+        mensagem_atualizada = services.formatar_mensagem_chamado(depois, user_id)
 
         client.chat_update(
             channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
@@ -257,9 +254,7 @@ mensagem_atualizada = services.formatar_mensagem_chamado(depois, user_id)
             ]
         )
 
-
         db.commit()
-
         client.chat_postMessage(
             channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
             thread_ts=ts,
