@@ -40,7 +40,6 @@ def handle_modal_submission(ack, body, view, client):
     ack()
     user = body["user"]["id"]
 
-    # Abrir canal com o usuário (para obter o ID real do canal)
     response = client.conversations_open(users=user)
     canal_id = response["channel"]["id"]
 
@@ -54,7 +53,6 @@ def handle_modal_submission(ack, body, view, client):
     data["data_saida"] = datetime.strptime(data["data_saida"], "%Y-%m-%d") if data.get("data_saida") else None
     data["valor_locacao"] = float(data["valor_locacao"].replace("R$", "").replace(".", "").replace(",", ".").strip()) if data.get("valor_locacao") else None
 
-    # Mensagem principal
     response_msg = client.chat_postMessage(
         channel=canal_id,
         text=f"🆕 ({data['locatario']}) Novo chamado aberto por <@{user}>: *{data['tipo_ticket']}*",
@@ -71,25 +69,14 @@ def handle_modal_submission(ack, body, view, client):
     )
     thread_ts = response_msg["ts"]
 
-# Registrar no banco
-services.criar_ordem_servico(data, thread_ts, canal_id)
+    # Salva no banco e envia mensagem na thread
+    services.criar_ordem_servico(data, thread_ts, canal_id)
 
-# Mensagem de detalhes na thread
-client.chat_postMessage(
-    channel=canal_id,
-    thread_ts=thread_ts,
-    text=services.formatar_mensagem_chamado(data, user)
-)
-
-
-# Criação com canal_id agora incluído
-services.criar_ordem_servico(data, thread_ts, canal_id)
-
-client.chat_postMessage(
-    channel=canal,
-    thread_ts=thread_ts,
-    text=services.formatar_mensagem_chamado(data, user)
-)
+    client.chat_postMessage(
+        channel=canal_id,
+        thread_ts=thread_ts,
+        text=services.formatar_mensagem_chamado(data, user)
+    )
 
 # 🎯 Ações de Botões
 @app.action("capturar_chamado")
