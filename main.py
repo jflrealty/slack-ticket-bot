@@ -71,25 +71,16 @@ def handle_modal_submission(ack, body, view, client):
     )
     thread_ts = response_msg["ts"]
 
-    # Registrar no banco
-    services.criar_ordem_servico(data, thread_ts, canal_id)
+# Registrar no banco
+services.criar_ordem_servico(data, thread_ts, canal_id)
 
-    # Mensagem de detalhes na thread
-    client.chat_postMessage(
-        channel=canal_id,
-        thread_ts=thread_ts,
-        text=services.formatar_mensagem_chamado(data, user)
-    )
+# Mensagem de detalhes na thread
+client.chat_postMessage(
+    channel=canal_id,
+    thread_ts=thread_ts,
+    text=services.formatar_mensagem_chamado(data, user)
+)
 
-    # Salva no banco com o canal_id real
-    services.criar_ordem_servico(data, thread_ts, canal_id)
-
-    # Mensagem complementar com todos os dados
-    client.chat_postMessage(
-        channel=canal_id,
-        thread_ts=thread_ts,
-        text=services.formatar_mensagem_chamado(data, user)
-    )
 
 # Criação com canal_id agora incluído
 services.criar_ordem_servico(data, thread_ts, canal_id)
