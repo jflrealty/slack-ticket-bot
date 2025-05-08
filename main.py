@@ -204,6 +204,41 @@ def handle_editar_submit(ack, body, view, client):
 
         chamado.log_edicoes = json.dumps(historico)  # ← Aqui garantimos que é string
 
+# Atualiza a mensagem da thread com os novos dados
+mensagem_atualizada = services.formatar_mensagem_chamado(depois, user_id)
+
+client.chat_update(
+    channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
+    ts=ts,
+    text=f"🆕 ({locatario}) Chamado atualizado por <@{user_id}>: *{chamado.tipo_ticket}*",
+    blocks=[
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"🆕 (*{locatario}*) Chamado atualizado por <@{user_id}>: *{chamado.tipo_ticket}*"
+            }
+        },
+        {
+            "type": "actions",
+            "elements": [
+                {"type": "button", "text": {"type": "plain_text", "text": "🔄 Capturar"}, "action_id": "capturar_chamado"},
+                {"type": "button", "text": {"type": "plain_text", "text": "✅ Finalizar"}, "action_id": "finalizar_chamado"},
+                {"type": "button", "text": {"type": "plain_text", "text": "♻️ Reabrir"}, "action_id": "reabrir_chamado"},
+                {"type": "button", "text": {"type": "plain_text", "text": "❌ Cancelar"}, "action_id": "cancelar_chamado"},
+                {"type": "button", "text": {"type": "plain_text", "text": "✏️ Editar"}, "action_id": "editar_chamado"}
+            ]
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": mensagem_atualizada
+            }
+        }
+    ]
+)
+        
         db.commit()
         client.chat_postMessage(
             channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
