@@ -228,13 +228,13 @@ mensagem_atualizada = services.formatar_mensagem_chamado(depois, user_id)
         client.chat_update(
             channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
             ts=ts,
-            text=f"🆕 ({locatario}) Chamado atualizado por <@{user_id}>: *{tipo_ticket}*",
+            text=f"🆕 ({locatario}) Chamado atualizado por <@{user_id}>: *{chamado.tipo_ticket}*",
             blocks=[
                 {
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"🆕 (*{locatario}*) Chamado atualizado por <@{user_id}>: *{tipo_ticket}*"
+                        "text": f"🆕 (*{locatario}*) Chamado atualizado por <@{user_id}>: *{chamado.tipo_ticket}*"
                     }
                 },
                 {
@@ -249,10 +249,14 @@ mensagem_atualizada = services.formatar_mensagem_chamado(depois, user_id)
                 },
                 {
                     "type": "section",
-                    "text": {"type": "mrkdwn", "text": mensagem_atualizada}
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": mensagem_atualizada
+                    }
                 }
             ]
         )
+
 
         db.commit()
 
