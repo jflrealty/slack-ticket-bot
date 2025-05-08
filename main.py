@@ -219,6 +219,34 @@ def handle_editar_submit(ack, body, view, client):
 
     db.close()
 
+# Atualizar a mensagem original da thread
+mensagem_atualizada = services.formatar_mensagem_chamado(depois, user_id)
+
+client.chat_update(
+    channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
+    ts=ts,
+    text=f"🆕 ({locatario}) Chamado atualizado por <@{user_id}>: *{chamado.tipo_ticket}*",
+    blocks=[
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"🆕 (*{locatario}*) Chamado atualizado por <@{user_id}>: *{chamado.tipo_ticket}*"
+            }
+        },
+        {
+            "type": "actions",
+            "elements": [
+                {"type": "button", "text": {"type": "plain_text", "text": "🔄 Capturar"}, "value": "capturar", "action_id": "capturar_chamado"},
+                {"type": "button", "text": {"type": "plain_text", "text": "✅ Finalizar"}, "value": "finalizar", "action_id": "finalizar_chamado"},
+                {"type": "button", "text": {"type": "plain_text", "text": "♻️ Reabrir"}, "value": "reabrir", "action_id": "reabrir_chamado"},
+                {"type": "button", "text": {"type": "plain_text", "text": "❌ Cancelar"}, "value": "cancelar", "action_id": "cancelar_chamado"},
+                {"type": "button", "text": {"type": "plain_text", "text": "✏️ Editar"}, "value": "editar", "action_id": "editar_chamado"}
+            ]
+        }
+    ]
+)
+
 # 📋 Comando listar meus chamados
 @app.command("/meus-chamados")
 def handle_meus_chamados(ack, body, client):
