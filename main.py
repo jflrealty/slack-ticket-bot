@@ -259,7 +259,7 @@ def handle_editar_submit(ack, body, view, client):
 
         try:
             client.chat_update(
-                channel=chamado.canal_id,
+                channel=canal,
                 ts=ts,
                 text=f"🆕 ({locatario}) Chamado atualizado por <@{user_id}>: *{chamado.tipo_ticket}*",
                 blocks=[
