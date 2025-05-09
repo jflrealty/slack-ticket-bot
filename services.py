@@ -363,31 +363,33 @@ def lembrar_chamados_vencidos(client):
 
 # 📄 Formatar mensagem bonitinha
 def formatar_mensagem_chamado(data, user_id):
+    def formatar(valor):
+        return valor if valor else "–"
+
     valor_raw = data.get("valor_locacao")
     valor_formatado = "–"
-try:
-    if isinstance(valor_raw, (int, float)):
-        valor_formatado = f"R$ {valor_raw:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    elif isinstance(valor_raw, str):
-        valor_float = float(valor_raw.replace("R$", "").replace(".", "").replace(",", ".").strip())
-        valor_formatado = f"R$ {valor_float:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-except:
-    valor_formatado = str(valor_raw)
-    return (
-        "📄 *Detalhes do Chamado:*\n"
-        f"• *Tipo de Ticket:* {data['tipo_ticket']}\n"
-        f"• *Tipo de Contrato:* {data['tipo_contrato']}\n"
-        f"• *Locatário:* {data['locatario']}\n"
-        f"• *Moradores:* {data['moradores']}\n"
-        f"• *Empreendimento:* {data['empreendimento']}\n"
-        f"• *Unidade e Metragem:* {data['unidade_metragem']}\n"
-        f"• *Data de Entrada:* {data['data_entrada'].strftime('%Y-%m-%d') if data['data_entrada'] else '–'}\n"
-        f"• *Data de Saída:* {data['data_saida'].strftime('%Y-%m-%d') if data['data_saida'] else '–'}\n"
-        f"• *Valor da Locação:* {valor_formatado}\n"
-        f"• *Responsável:* <@{data['responsavel']}>\n"
-        f"• *Solicitante:* <@{user_id}>"
-    )
+    try:
+        if isinstance(valor_raw, (int, float)):
+            valor_formatado = f"R$ {valor_raw:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        elif isinstance(valor_raw, str):
+            valor_float = float(valor_raw.replace("R$", "").replace(".", "").replace(",", ".").strip())
+            valor_formatado = f"R$ {valor_float:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except:
+        valor_formatado = str(valor_raw)
 
+    return (
+        f"*Tipo:* {formatar(data.get('tipo_ticket'))}\n"
+        f"*Contrato:* {formatar(data.get('tipo_contrato'))}\n"
+        f"*Locatário:* {formatar(data.get('locatario'))}\n"
+        f"*Moradores:* {formatar(data.get('moradores'))}\n"
+        f"*Empreendimento:* {formatar(data.get('empreendimento'))}\n"
+        f"*Unidade:* {formatar(data.get('unidade_metragem'))}\n"
+        f"*Entrada:* {formatar(data.get('data_entrada'))}\n"
+        f"*Saída:* {formatar(data.get('data_saida'))}\n"
+        f"*Valor:* {valor_formatado}\n"
+        f"*Responsável:* <@{data.get('responsavel')}>\n"
+        f"*Solicitante:* <@{user_id}>"
+    )
 from database import SessionLocal
 from models import OrdemServico
 from datetime import datetime
