@@ -146,7 +146,8 @@ def criar_ordem_servico(data, thread_ts=None):
             data_abertura=datetime.utcnow(),
             sla_limite=sla_prazo,
             sla_status="dentro do prazo",
-            thread_ts=thread_ts
+            thread_ts=thread_ts,
+            canal_id=canal_id
         )
         session.add(nova_os)
         session.commit()
