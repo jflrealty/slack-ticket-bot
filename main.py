@@ -39,7 +39,10 @@ def handle_chamado_command(ack, body, client):
 def handle_modal_submission(ack, body, view, client):
     ack()
     user = body["user"]["id"]
-    canal = os.getenv("SLACK_CANAL_CHAMADOS", "#comercial")
+
+    # Pega o ID real do canal
+    response_open = client.conversations_open(users=user)
+    canal_id = response_open["channel"]["id"]
 
     data = {}
     for block_id, value in view["state"]["values"].items():
@@ -52,7 +55,7 @@ def handle_modal_submission(ack, body, view, client):
     data["valor_locacao"] = float(data["valor_locacao"].replace("R$", "").replace(".", "").replace(",", ".").strip()) if data.get("valor_locacao") else None
 
     response = client.chat_postMessage(
-        channel=canal,
+        channel=canal_id,
         text=f"🆕 ({data['locatario']}) Novo chamado aberto por <@{user}>: *{data['tipo_ticket']}*",
         blocks=[
             {"type": "section", "text": {"type": "mrkdwn", "text": f"🆕 (*{data['locatario']}*) Novo chamado aberto por <@{user}>: *{data['tipo_ticket']}*"}},
@@ -66,9 +69,13 @@ def handle_modal_submission(ack, body, view, client):
         ]
     )
     thread_ts = response["ts"]
-    services.criar_ordem_servico(data, thread_ts)
-    client.chat_postMessage(channel=canal, thread_ts=thread_ts, text=services.formatar_mensagem_chamado(data, user))
 
+    # Salvar com canal_id real
+    services.criar_ordem_servico(data, thread_ts, canal_id)
+
+    # Detalhes do chamado
+    client.chat_postMessage(channel=canal_id, thread_ts=thread_ts, text=services.formatar_mensagem_chamado(data, user))
+    
 # 🎯 Ações de Botões
 @app.action("capturar_chamado")
 def handle_capturar(ack, body, client):
