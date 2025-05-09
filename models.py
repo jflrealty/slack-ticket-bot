@@ -29,6 +29,7 @@ class OrdemServico(Base):
     thread_ts = Column(Text)
     historico_reaberturas = Column(Text, default="")
     motivo_cancelamento = Column(String, nullable=True)
+    thread_detail_ts = Column(String, nullable=True)  # para guardar o ts da mensagem de detalhes
 
     # ✅ Novos campos para log de edição
     data_ultima_edicao = Column(TIMESTAMP, nullable=True)
