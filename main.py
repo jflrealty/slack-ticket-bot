@@ -1,4 +1,4 @@
-F# 📦 Slack SDK e Bolt
+# 📦 Slack SDK e Bolt
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_sdk import WebClient
