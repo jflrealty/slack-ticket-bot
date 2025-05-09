@@ -33,4 +33,5 @@ class OrdemServico(Base):
     # ✅ Novos campos para log de edição
     data_ultima_edicao = Column(TIMESTAMP, nullable=True)
     ultimo_editor = Column(String, nullable=True)
+    canal_id = Column(String, nullable=True)
     log_edicoes = Column(Text, default="")
