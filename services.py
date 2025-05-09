@@ -126,7 +126,7 @@ def montar_blocos_modal():
     ]
 
 # 🧾 Criar novo chamado
-def criar_ordem_servico(data, thread_ts=None):
+def criar_ordem_servico(data, thread_ts=None, canal_id=None):
     session = SessionLocal()
     try:
         sla_prazo = datetime.utcnow() + timedelta(hours=24)
