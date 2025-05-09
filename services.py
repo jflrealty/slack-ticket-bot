@@ -611,10 +611,10 @@ def reabrir_chamado(client, body, view):
     db.close()
 
     client.chat_postMessage(
-        channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
+        channel=chamado.canal_id,
         thread_ts=ts,
         text=f"♻️ Chamado reaberto por <@{user_id}>!\nNovo Tipo de Ticket: *{novo_tipo}*"
-    )
+)
 
 def ajustar_historico(texto):
     if not texto:
