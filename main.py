@@ -1,4 +1,4 @@
-# 📦 Slack SDK e Bolt
+F# 📦 Slack SDK e Bolt
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_sdk import WebClient
@@ -171,9 +171,7 @@ def handle_editar_submit(ack, body, view, client):
     valor_str = pegar_valor("valor_locacao")
 
     try:
-        valor_locacao = float(
-            valor_str.replace("R$", "").replace(".", "").replace(",", ".").strip()
-        )
+        valor_locacao = float(valor_str.replace("R$", "").replace(".", "").replace(",", ".").strip())
     except Exception:
         valor_locacao = None
 
@@ -184,6 +182,7 @@ def handle_editar_submit(ack, body, view, client):
 
     db = SessionLocal()
     chamado = db.query(OrdemServico).filter_by(thread_ts=ts).first()
+
     if chamado:
         antes = {
             "tipo_contrato": chamado.tipo_contrato,
@@ -226,11 +225,11 @@ def handle_editar_submit(ack, body, view, client):
 
         chamado.log_edicoes = json.dumps(historico, default=str)
 
-        # Atualiza mensagem principal da thread
+        # ⚠️ CORRIGIDO AQUI: usando canal_id salvo no banco
         mensagem_atualizada = services.formatar_mensagem_chamado(depois, user_id)
 
         client.chat_update(
-            channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
+            channel=chamado.canal_id,
             ts=ts,
             text=f"🆕 ({locatario}) Chamado atualizado por <@{user_id}>: *{chamado.tipo_ticket}*",
             blocks=[
@@ -262,8 +261,9 @@ def handle_editar_submit(ack, body, view, client):
         )
 
         db.commit()
+
         client.chat_postMessage(
-            channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
+            channel=chamado.canal_id,
             thread_ts=ts,
             text=f"✏️ Chamado editado por <@{user_id}> com sucesso."
         )
