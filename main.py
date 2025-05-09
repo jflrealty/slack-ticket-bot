@@ -100,12 +100,6 @@ def handle_modal_submission(ack, body, view, client):
         thread_ts=thread_ts,
         text=services.formatar_mensagem_chamado(data, user)
     )
-
-    # Salvar com canal_id real
-    services.criar_ordem_servico(data, thread_ts, canal_id)
-
-    # Detalhes do chamado
-    client.chat_postMessage(channel=canal_id, thread_ts=thread_ts, text=services.formatar_mensagem_chamado(data, user))
     
 # 🎯 Ações de Botões
 @app.action("capturar_chamado")
