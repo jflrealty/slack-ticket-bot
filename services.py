@@ -363,7 +363,16 @@ def lembrar_chamados_vencidos(client):
 
 # 📄 Formatar mensagem bonitinha
 def formatar_mensagem_chamado(data, user_id):
-    valor_formatado = f"R$ {data['valor_locacao']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    valor_raw = data.get("valor_locacao")
+    valor_formatado = "–"
+try:
+    if isinstance(valor_raw, (int, float)):
+        valor_formatado = f"R$ {valor_raw:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    elif isinstance(valor_raw, str):
+        valor_float = float(valor_raw.replace("R$", "").replace(".", "").replace(",", ".").strip())
+        valor_formatado = f"R$ {valor_float:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+except:
+    valor_formatado = str(valor_raw)
     return (
         "📄 *Detalhes do Chamado:*\n"
         f"• *Tipo de Ticket:* {data['tipo_ticket']}\n"
