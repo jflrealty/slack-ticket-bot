@@ -317,11 +317,6 @@ client.chat_postMessage(
     text=f"✏️ Chamado editado por <@{user_id}> com sucesso."
 )
 
-        client.chat_postMessage(
-            channel=canal,
-            thread_ts=ts,
-            text=f"✏️ Chamado editado por <@{user_id}> com sucesso."
-        )
     else:
         client.chat_postEphemeral(
             channel=user_id,
