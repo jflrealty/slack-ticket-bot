@@ -308,7 +308,7 @@ client.chat_postMessage(
     text=f"✏️ Chamado editado por <@{user_id}> com sucesso."
 )
 
-        db.commit()
+    db.commit()
 
         client.chat_postMessage(
             channel=canal,
