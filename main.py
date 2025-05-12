@@ -250,17 +250,12 @@ def handle_editar_submit(ack, body, view, client):
 
         chamado.log_edicoes = json.dumps(historico, default=str)
 
-        # 💬 Atualiza mensagem principal
         mensagem_atualizada = services.formatar_mensagem_chamado(depois, user_id)
-
-        # 🛠️ Verificação e fallback de canal
         canal = chamado.canal_id or os.getenv("SLACK_CANAL_CHAMADOS", "#comercial")
-        print("📡 Canal usado para editar:", canal)
 
         try:
-            ts_principal = chamado.thread_ts  # mensagem principal
+            ts_principal = chamado.thread_ts
 
-            # Atualiza a mensagem principal da thread
             client.chat_update(
                 channel=canal,
                 ts=ts_principal,
@@ -293,7 +288,6 @@ def handle_editar_submit(ack, body, view, client):
                 ]
             )
 
-            # Confirmação simples na thread
             client.chat_postMessage(
                 channel=canal,
                 thread_ts=ts_principal,
@@ -309,13 +303,6 @@ def handle_editar_submit(ack, body, view, client):
                 user=user_id,
                 text="❌ Erro ao atualizar a mensagem no canal. Verifique o canal_id."
             )
-
-# Confirmação simples na thread
-client.chat_postMessage(
-    channel=canal,
-    thread_ts=ts_principal,
-    text=f"✏️ Chamado editado por <@{user_id}> com sucesso."
-)
 
     else:
         client.chat_postEphemeral(
