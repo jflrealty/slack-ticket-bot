@@ -67,13 +67,13 @@ def handle_modal_submission(ack, body, view, client):
     # ✅ Mensagem principal no canal público
     response = client.chat_postMessage(
         channel=canal_id,
-        text=f"🆕 ({data['locatario']}) Novo chamado aberto por <@{user}>: *{data['tipo_ticket']}*",
+        text=f"({data['locatario']}) - {data['empreendimento']} - {data['unidade_metragem']} <@{user}>: *{data['tipo_ticket']}*",
         blocks=[
             {
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"🆕 (*{data['locatario']}*) Novo chamado aberto por <@{user}>: *{data['tipo_ticket']}*"
+                    "text": f"({data['locatario']}) - {data['empreendimento']} - {data['unidade_metragem']} <@{user}>: *{data['tipo_ticket']}*"
                 }
             },
             {
@@ -259,13 +259,13 @@ def handle_editar_submit(ack, body, view, client):
             client.chat_update(
                 channel=canal,
                 ts=ts_principal,
-                text=f"🆕 ({locatario}) Chamado atualizado por <@{user_id}>: *{chamado.tipo_ticket}*",
+                text=f"({locatario}) - {chamado.empreendimento} - {chamado.unidade_metragem} <@{user_id}>: *{chamado.tipo_ticket}*",
                 blocks=[
                     {
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": f"🆕 (*{locatario}*) Chamado atualizado por <@{user_id}>: *{chamado.tipo_ticket}*"
+                            "text": f"({locatario}) - {chamado.empreendimento} - {chamado.unidade_metragem} <@{user_id}>: *{chamado.tipo_ticket}*"
                         }
                     },
                     {
