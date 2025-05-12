@@ -301,7 +301,7 @@ def handle_editar_submit(ack, body, view, client):
             client.chat_postEphemeral(
                 channel=user_id,
                 user=user_id,
-                text="❌ Erro ao atualizar a mensagem no canal. Verifique o canal_id."
+                text="❌ Erro ao atualizar a mensagem na thread. Verifique o canal_id."
             )
 
     else:
