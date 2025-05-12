@@ -24,7 +24,7 @@ app = App(token=os.getenv("SLACK_BOT_TOKEN"))
 client = WebClient(token=os.getenv("SLACK_BOT_TOKEN"))
 
 # 🧾 /chamado: Abrir novo chamado
-@app.command("/chamado")
+@app.command("/chamado-comercial")
 def handle_chamado_command(ack, body, client):
     ack()
     client.views_open(trigger_id=body["trigger_id"], view={
@@ -308,14 +308,14 @@ def handle_editar_submit(ack, body, view, client):
     db.close()
 
 # 📋 Comando listar meus chamados
-@app.command("/meus-chamados")
+@app.command("/meus-chamados-comercial")
 def handle_meus_chamados(ack, body, client):
     ack()
     user_id = body["user_id"]
     services.exibir_lista(client, user_id)
 
 # 📤 Exportar chamados
-@app.command("/exportar-chamado")
+@app.command("/exportar-chamado-comercial")
 def handle_exportar_command(ack, body, client):
     ack()
     client.views_open(trigger_id=body["trigger_id"], view={
