@@ -287,13 +287,7 @@ def handle_editar_submit(ack, body, view, client):
                     }
                 ]
             )
-
-            client.chat_postMessage(
-                channel=canal,
-                thread_ts=ts_principal,
-                text=f"✏️ Chamado editado por <@{user_id}> com sucesso."
-            )
-
+            
             db.commit()
 
         except Exception as e:
