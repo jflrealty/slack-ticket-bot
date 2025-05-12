@@ -257,45 +257,56 @@ def handle_editar_submit(ack, body, view, client):
         canal = chamado.canal_id or os.getenv("SLACK_CANAL_CHAMADOS", "#comercial")
         print("📡 Canal usado para editar:", canal)
 
-        try:
-            client.chat_update(
-                channel=canal,
-                ts=ts,
-                text=f"🆕 ({locatario}) Chamado atualizado por <@{user_id}>: *{chamado.tipo_ticket}*",
-                blocks=[
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": f"🆕 (*{locatario}*) Chamado atualizado por <@{user_id}>: *{chamado.tipo_ticket}*"
-                        }
-                    },
-                    {
-                        "type": "actions",
-                        "elements": [
-                            {"type": "button", "text": {"type": "plain_text", "text": "🔄 Capturar"}, "action_id": "capturar_chamado"},
-                            {"type": "button", "text": {"type": "plain_text", "text": "✅ Finalizar"}, "action_id": "finalizar_chamado"},
-                            {"type": "button", "text": {"type": "plain_text", "text": "♻️ Reabrir"}, "action_id": "reabrir_chamado"},
-                            {"type": "button", "text": {"type": "plain_text", "text": "❌ Cancelar"}, "action_id": "cancelar_chamado"},
-                            {"type": "button", "text": {"type": "plain_text", "text": "✏️ Editar"}, "action_id": "editar_chamado"}
-                        ]
-                    },
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": mensagem_atualizada
-                        }
-                    }
+try:
+    # Garante que está usando o ID da mensagem principal (thread)
+    ts_principal = chamado.thread_ts  # deve ter sido salvo corretamente na criação
+
+    # Atualiza a mensagem principal da thread
+    client.chat_update(
+        channel=canal,
+        ts=ts_principal,
+        text=f"🆕 ({locatario}) Chamado atualizado por <@{user_id}>: *{chamado.tipo_ticket}*",
+        blocks=[
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"🆕 (*{locatario}*) Chamado atualizado por <@{user_id}>: *{chamado.tipo_ticket}*"
+                }
+            },
+            {
+                "type": "actions",
+                "elements": [
+                    {"type": "button", "text": {"type": "plain_text", "text": "🔄 Capturar"}, "action_id": "capturar_chamado"},
+                    {"type": "button", "text": {"type": "plain_text", "text": "✅ Finalizar"}, "action_id": "finalizar_chamado"},
+                    {"type": "button", "text": {"type": "plain_text", "text": "♻️ Reabrir"}, "action_id": "reabrir_chamado"},
+                    {"type": "button", "text": {"type": "plain_text", "text": "❌ Cancelar"}, "action_id": "cancelar_chamado"},
+                    {"type": "button", "text": {"type": "plain_text", "text": "✏️ Editar"}, "action_id": "editar_chamado"}
                 ]
-            )
-        except Exception as e:
-            print(f"❌ Erro ao fazer chat_update: {e}")
-            client.chat_postEphemeral(
-                channel=user_id,
-                user=user_id,
-                text="❌ Erro ao atualizar a mensagem no canal. Verifique o canal_id."
-            )
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": mensagem_atualizada
+                }
+            }
+        ]
+    )
+except Exception as e:
+    print(f"❌ Erro ao fazer chat_update: {e}")
+    client.chat_postEphemeral(
+        channel=user_id,
+        user=user_id,
+        text="❌ Erro ao atualizar a mensagem no canal. Verifique o canal_id."
+    )
+
+# Confirmação simples na thread
+client.chat_postMessage(
+    channel=canal,
+    thread_ts=ts_principal,
+    text=f"✏️ Chamado editado por <@{user_id}> com sucesso."
+)
 
         db.commit()
 
