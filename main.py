@@ -23,7 +23,7 @@ load_dotenv()
 app = App(token=os.getenv("SLACK_BOT_TOKEN"))
 client = WebClient(token=os.getenv("SLACK_BOT_TOKEN"))
 
-@app.command("/chamado-comercial")
+@app.command("/comercial-os")
 def handle_chamado_command(ack, body, client, logger):
     ack()  # ⚡️ ACK imediato é obrigatório
 
@@ -322,14 +322,14 @@ def handle_editar_submit(ack, body, view, client):
     db.close()
 
 # 📋 Comando listar meus chamados
-@app.command("/meus-chamados-comercial")
+@app.command("/minhas-os-comercial")
 def handle_meus_chamados(ack, body, client):
     ack()
     user_id = body["user_id"]
     services.exibir_lista(client, user_id)
 
 # 📤 Exportar chamados
-@app.command("/exportar-chamado-comercial")
+@app.command("/exportar-os-comercial")
 def handle_exportar_command(ack, body, client, logger):
     ack()  # ✅ Ack imediato para evitar trigger_id expirado
 
