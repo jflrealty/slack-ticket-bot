@@ -49,6 +49,8 @@ def handle_chamado_command(ack, body, client, logger):
             text="❌ Ocorreu um erro ao abrir o formulário de chamado. Tente novamente."
         )
 
+threading.Thread(target=abrir_modal).start()
+
 @app.view("modal_abertura_chamado")
 def handle_modal_submission(ack, body, view, client):
     ack()
