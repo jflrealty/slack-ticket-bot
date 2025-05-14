@@ -317,19 +317,30 @@ def handle_meus_chamados(ack, body, client):
 # 📤 Exportar chamados
 @app.command("/exportar-chamado-comercial")
 def handle_exportar_command(ack, body, client, logger):
-    ack()
-    blocks = services.montar_blocos_exportacao()
-    client.views_open(
-        trigger_id=body["trigger_id"],
-        view={
-            "type": "modal",
-            "callback_id": "escolher_exportacao",
-            "title": {"type": "plain_text", "text": "Exportar Chamados"},
-            "submit": {"type": "plain_text", "text": "Exportar"},
-            "private_metadata": body["user_id"],
-            "blocks": blocks
-        }
-    )
+    ack()  # ✅ Ack imediato para evitar trigger_id expirado
+
+    try:
+        # 🔽 Isso é leve e seguro
+        blocks = services.montar_blocos_exportacao()
+
+        client.views_open(
+            trigger_id=body["trigger_id"],
+            view={
+                "type": "modal",
+                "callback_id": "escolher_exportacao",
+                "title": {"type": "plain_text", "text": "Exportar Chamados"},
+                "submit": {"type": "plain_text", "text": "Exportar"},
+                "private_metadata": body["user_id"],
+                "blocks": blocks
+            }
+        )
+    except Exception as e:
+        logger.error(f"❌ Erro ao abrir modal de exportação: {e}")
+        client.chat_postEphemeral(
+            channel=body["channel_id"],
+            user=body["user_id"],
+            text="❌ Ocorreu um erro ao abrir o modal de exportação. Tente novamente."
+        )
 
 @app.view("escolher_exportacao")
 def exportar_chamados_handler(ack, body, view, client):
