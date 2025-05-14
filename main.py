@@ -23,17 +23,31 @@ load_dotenv()
 app = App(token=os.getenv("SLACK_BOT_TOKEN"))
 client = WebClient(token=os.getenv("SLACK_BOT_TOKEN"))
 
-# 🧾 /chamado: Abrir novo chamado
 @app.command("/chamado-comercial")
-def handle_chamado_command(ack, body, client):
-    ack()
-    client.views_open(trigger_id=body["trigger_id"], view={
-        "type": "modal",
-        "callback_id": "modal_abertura_chamado",
-        "title": {"type": "plain_text", "text": "Novo Chamado"},
-        "submit": {"type": "plain_text", "text": "Abrir"},
-        "blocks": services.montar_blocos_modal()
-    })
+def handle_chamado_command(ack, body, client, logger):
+    ack()  # ⚡️ SEMPRE IMEDIATO!
+
+    try:
+        blocks = services.montar_blocos_modal()  # pode ser leve, fora do ack
+
+        client.views_open(
+            trigger_id=body["trigger_id"],
+            view={
+                "type": "modal",
+                "callback_id": "modal_abertura_chamado",
+                "title": {"type": "plain_text", "text": "Novo Chamado"},
+                "submit": {"type": "plain_text", "text": "Abrir"},
+                "blocks": blocks
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"❌ Erro ao abrir modal de chamado: {e}")
+        client.chat_postEphemeral(
+            channel=body["channel_id"],
+            user=body["user_id"],
+            text="❌ Ocorreu um erro ao abrir o formulário de chamado. Tente novamente."
+        )
 
 @app.view("modal_abertura_chamado")
 def handle_modal_submission(ack, body, view, client):
