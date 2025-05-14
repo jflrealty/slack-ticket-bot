@@ -25,10 +25,10 @@ client = WebClient(token=os.getenv("SLACK_BOT_TOKEN"))
 
 @app.command("/chamado-comercial")
 def handle_chamado_command(ack, body, client, logger):
-    ack()  # ⚡️ SEMPRE IMEDIATO!
+    ack()  # ⚡️ ACK imediato é obrigatório
 
     try:
-        blocks = services.montar_blocos_modal()  # pode ser leve, fora do ack
+        blocks = services.montar_blocos_modal()
 
         client.views_open(
             trigger_id=body["trigger_id"],
@@ -44,13 +44,11 @@ def handle_chamado_command(ack, body, client, logger):
     except Exception as e:
         logger.error(f"❌ Erro ao abrir modal de chamado: {e}")
         client.chat_postEphemeral(
-            channel=body["channel_id"],
+            channel=body.get("channel_id", os.getenv("SLACK_CANAL_CHAMADOS", "#comercial")),
             user=body["user_id"],
             text="❌ Ocorreu um erro ao abrir o formulário de chamado. Tente novamente."
         )
-
-threading.Thread(target=abrir_modal).start()
-
+        
 @app.view("modal_abertura_chamado")
 def handle_modal_submission(ack, body, view, client):
     ack()
