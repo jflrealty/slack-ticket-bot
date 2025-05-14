@@ -316,16 +316,22 @@ def handle_meus_chamados(ack, body, client):
 
 # 📤 Exportar chamados
 @app.command("/exportar-chamado-comercial")
-def handle_exportar_command(ack, body, client):
-    ack()
-    client.views_open(trigger_id=body["trigger_id"], view={
-        "type": "modal",
-        "callback_id": "escolher_exportacao",
-        "title": {"type": "plain_text", "text": "Exportar Chamados"},
-        "submit": {"type": "plain_text", "text": "Exportar"},
-        "private_metadata": body["user_id"],
-        "blocks": services.montar_blocos_exportacao()
-    })
+def handle_exportar_command(ack, body, client, logger):
+    ack()  # ✅ Primeiro: sempre ACK imediato
+
+    try:
+        blocks = services.montar_blocos_exportacao()  # Monta rápido (sem demorar)
+        client.views_open(
+            trigger_id=body["trigger_id"],
+            view={
+                "type": "modal",
+                "callback_id": "escolher_exportacao",
+                "title": {"type": "plain_text", "text": "Exportar Chamados"},
+                "submit": {"type": "plain_text", "text": "Exportar"},
+                "private_metadata": body["user_id"],
+                "blocks": blocks
+            }
+        )
 
 @app.view("escolher_exportacao")
 def exportar_chamados_handler(ack, body, view, client):
