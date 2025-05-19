@@ -363,7 +363,13 @@ def lembrar_chamados_vencidos(client):
 # 📄 Formatar mensagem bonitinha
 def formatar_mensagem_chamado(data, user_id):
     def formatar(valor):
-        return valor if valor else "–"
+        if not valor:
+            return "–"
+        if isinstance(valor, str) and valor.startswith("S"):  # grupo Slack
+            return f"<!subteam^{valor}>"
+        if isinstance(valor, str) and valor.startswith("U"):  # usuário Slack
+            return f"<@{valor}>"
+        return str(valor)
 
     valor_raw = data.get("valor_locacao")
     valor_formatado = "–"
@@ -374,7 +380,7 @@ def formatar_mensagem_chamado(data, user_id):
             valor_float = float(valor_raw.replace("R$", "").replace(".", "").replace(",", ".").strip())
             valor_formatado = f"R$ {valor_float:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     except:
-        valor_formatado = str(valor_raw)
+        valor_formatado = str(valor_raw) if valor_raw else "–"
 
     return (
         f"*Tipo:* {formatar(data.get('tipo_ticket'))}\n"
@@ -386,9 +392,10 @@ def formatar_mensagem_chamado(data, user_id):
         f"*Entrada:* {formatar(data.get('data_entrada'))}\n"
         f"*Saída:* {formatar(data.get('data_saida'))}\n"
         f"*Valor:* {valor_formatado}\n"
-        f"*Responsável:* <@{data.get('responsavel')}>\n"
+        f"*Responsável:* {formatar(data.get('responsavel'))}\n"
         f"*Solicitante:* <@{user_id}>"
     )
+    
 from database import SessionLocal
 from models import OrdemServico
 from datetime import datetime
