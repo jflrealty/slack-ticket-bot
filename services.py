@@ -116,9 +116,7 @@ def montar_blocos_modal():
                     {"text": {"type": "plain_text", "text": "Victor"}, "value": "U07B2130TKQ"},
                     {"text": {"type": "plain_text", "text": "Gabriel"}, "value": "U06TNKNRZHT"},
                     {"text": {"type": "plain_text", "text": "Douglas"}, "value": "U08ANPS7V7Y"},
-                    {"text": {"type": "plain_text", "text": "Luciana"}, "value": "U06TAJU7C95"},
-                    {"text": {"type": "plain_text", "text": "Caroline"}, "value": "U08DRE18RR7"},
-                    {"text": {"type": "plain_text", "text": "Gabriella"}, "value": "U08NSKS2AKH"}
+                    {"text": {"type": "plain_text", "text": "Reservas"}, "value": "S08STJCNMHR"}
                 ]
             },
             "label": {"type": "plain_text", "text": "Responsável"}
