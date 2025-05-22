@@ -608,7 +608,7 @@ def reabrir_chamado(client, body, view):
         chamado.data_fechamento = None
         chamado.responsavel = None
 
-        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        now = datetime.now().strftime("%Y-%m-%d")
         nome_real = get_nome_slack(user_id)
         novo_historico = f"[{now}] {nome_real} reabriu para *{novo_tipo}*\n"
 
