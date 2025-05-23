@@ -603,6 +603,7 @@ def reabrir_chamado(client, body, view):
 
     db = SessionLocal()
     chamado = db.query(OrdemServico).filter(OrdemServico.thread_ts == ts).first()
+
     if chamado:
         chamado.tipo_ticket = novo_tipo
         chamado.status = "aberto"
@@ -613,15 +614,27 @@ def reabrir_chamado(client, body, view):
         now = datetime.now().strftime("%Y-%m-%d")
         nome_real = get_nome_slack(user_id)
         novo_historico = f"[{now}] {nome_real} reabriu para *{novo_tipo}*\n"
+        chamado.historico_reaberturas = novo_historico
+
+        canal_id = chamado.canal_id
+        thread_ts = chamado.thread_ts
 
         db.commit()
-    db.close()
+        db.close()
 
-    client.chat_postMessage(
-        channel=chamado.canal_id,
-        thread_ts=ts,
-        text=f"♻️ Chamado reaberto por <@{user_id}>!\nNovo Tipo de Ticket: *{novo_tipo}*"
-)
+        # ✅ Posta confirmação apenas
+        client.chat_postMessage(
+            channel=canal_id,
+            thread_ts=thread_ts,
+            text=f"♻️ Chamado reaberto por <@{user_id}>!\nNovo Tipo de Ticket: *{novo_tipo}*"
+        )
+    else:
+        db.close()
+        client.chat_postEphemeral(
+            channel=os.getenv("SLACK_CANAL_CHAMADOS", "#comercial"),
+            user=user_id,
+            text="❌ Chamado não encontrado para reabertura."
+        )
 
 def ajustar_historico(texto):
     if not texto:
