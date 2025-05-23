@@ -264,22 +264,20 @@ def handle_editar_submit(ack, body, view, client):
 
         chamado.log_edicoes = json.dumps(historico, default=str)
 
-        mensagem_atualizada = services.formatar_mensagem_chamado(depois, user_id)
         canal = chamado.canal_id or os.getenv("SLACK_CANAL_CHAMADOS", "#comercial")
+        ts_principal = chamado.thread_ts
 
         try:
-            ts_principal = chamado.thread_ts
-
             client.chat_update(
                 channel=canal,
                 ts=ts_principal,
-                text=f"({locatario}) - {chamado.empreendimento} - {chamado.unidade_metragem} <@{user_id}>: *{chamado.tipo_ticket}*",
+                text=f"({locatario}) - {empreendimento} - {unidade_metragem} <@{user_id}>: *{chamado.tipo_ticket}*",
                 blocks=[
                     {
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": f"({locatario}) - {chamado.empreendimento} - {chamado.unidade_metragem} <@{user_id}>: *{chamado.tipo_ticket}*"
+                            "text": f"({locatario}) - {empreendimento} - {unidade_metragem} <@{user_id}>: *{chamado.tipo_ticket}*"
                         }
                     },
                     {
@@ -291,25 +289,25 @@ def handle_editar_submit(ack, body, view, client):
                             {"type": "button", "text": {"type": "plain_text", "text": "❌ Cancelar"}, "action_id": "cancelar_chamado"},
                             {"type": "button", "text": {"type": "plain_text", "text": "✏️ Editar"}, "action_id": "editar_chamado"}
                         ]
-                    },
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": mensagem_atualizada
-                        }
                     }
                 ]
             )
-            
+
+            # ✅ Mensagem de confirmação na thread
+            client.chat_postMessage(
+                channel=canal,
+                thread_ts=ts_principal,
+                text=f"✏️ Chamado editado com sucesso por <@{user_id}>."
+            )
+
             db.commit()
 
         except Exception as e:
-            print(f"❌ Erro ao fazer chat_update: {e}")
+            print(f"❌ Erro ao atualizar chamado: {e}")
             client.chat_postEphemeral(
                 channel=user_id,
                 user=user_id,
-                text="❌ Erro ao atualizar a mensagem na thread. Verifique o canal_id."
+                text="❌ Erro ao atualizar a mensagem. Verifique o canal_id ou ts."
             )
 
     else:
