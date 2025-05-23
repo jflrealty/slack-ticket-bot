@@ -79,7 +79,7 @@ def handle_modal_submission(ack, body, view, client):
     )
 
     # ✅ Mensagem principal no canal público
-response = client.chat_postMessage(
+    response = client.chat_postMessage(
     channel=canal_id,
     text=f"({data['locatario']}) - {data['empreendimento']} - {data['unidade_metragem']} <@{user}>: *{data['tipo_ticket']}*",
     blocks=[
@@ -109,7 +109,8 @@ response = client.chat_postMessage(
         }
     ]
 )
-    thread_ts = response["ts"]
+
+thread_ts = response["ts"]
 
     # ✅ Salva a ordem no banco com thread e canal
     services.criar_ordem_servico(data, thread_ts, canal_id)
