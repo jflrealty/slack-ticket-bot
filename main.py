@@ -91,13 +91,6 @@ def handle_modal_submission(ack, body, view, client):
                 }
             },
             {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": services.formatar_mensagem_chamado(data, user)
-                }
-            },
-            {
                 "type": "actions",
                 "elements": [
                     {"type": "button", "text": {"type": "plain_text", "text": "🔄 Capturar"}, "action_id": "capturar_chamado"},
