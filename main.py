@@ -264,20 +264,21 @@ def handle_editar_submit(ack, body, view, client):
 
         chamado.log_edicoes = json.dumps(historico, default=str)
 
-        canal = chamado.canal_id or os.getenv("SLACK_CANAL_CHAMADOS", "#comercial")
-        ts_principal = chamado.thread_ts
-
         try:
+            ts_principal = chamado.thread_ts
+            canal = chamado.canal_id or os.getenv("SLACK_CANAL_CHAMADOS", "#comercial")
+
+            # Atualiza a mensagem original da thread
             client.chat_update(
                 channel=canal,
                 ts=ts_principal,
-                text=f"({locatario}) - {empreendimento} - {unidade_metragem} <@{user_id}>: *{chamado.tipo_ticket}*",
+                text=f"({locatario}) - {empreendimento} - {unidade_metragem} <@{chamado.solicitante}>: *{chamado.tipo_ticket}*",
                 blocks=[
                     {
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": f"({locatario}) - {empreendimento} - {unidade_metragem} <@{user_id}>: *{chamado.tipo_ticket}*"
+                            "text": f"({locatario}) - {empreendimento} - {unidade_metragem} <@{chamado.solicitante}>: *{chamado.tipo_ticket}*"
                         }
                     },
                     {
@@ -293,7 +294,7 @@ def handle_editar_submit(ack, body, view, client):
                 ]
             )
 
-            # ✅ Mensagem de confirmação na thread
+            # Mensagem de confirmação na thread
             client.chat_postMessage(
                 channel=canal,
                 thread_ts=ts_principal,
@@ -303,11 +304,11 @@ def handle_editar_submit(ack, body, view, client):
             db.commit()
 
         except Exception as e:
-            print(f"❌ Erro ao atualizar chamado: {e}")
+            print(f"❌ Erro ao atualizar mensagem no Slack: {e}")
             client.chat_postEphemeral(
                 channel=user_id,
                 user=user_id,
-                text="❌ Erro ao atualizar a mensagem. Verifique o canal_id ou ts."
+                text="❌ Ocorreu um erro ao atualizar a mensagem da thread."
             )
 
     else:
