@@ -79,30 +79,36 @@ def handle_modal_submission(ack, body, view, client):
     )
 
     # ✅ Mensagem principal no canal público
-    response = client.chat_postMessage(
-        channel=canal_id,
-        text=f"({data['locatario']}) - {data['empreendimento']} - {data['unidade_metragem']} <@{user}>: *{data['tipo_ticket']}*",
-        blocks=[
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"({data['locatario']}) - {data['empreendimento']} - {data['unidade_metragem']} <@{user}>: *{data['tipo_ticket']}*"
-                }
-            },
-            {
-                "type": "actions",
-                "elements": [
-                    {"type": "button", "text": {"type": "plain_text", "text": "🔄 Capturar"}, "action_id": "capturar_chamado"},
-                    {"type": "button", "text": {"type": "plain_text", "text": "✅ Finalizar"}, "action_id": "finalizar_chamado"},
-                    {"type": "button", "text": {"type": "plain_text", "text": "♻️ Reabrir"}, "action_id": "reabrir_chamado"},
-                    {"type": "button", "text": {"type": "plain_text", "text": "❌ Cancelar"}, "action_id": "cancelar_chamado"},
-                    {"type": "button", "text": {"type": "plain_text", "text": "✏️ Editar"}, "action_id": "editar_chamado"}
-                ]
+response = client.chat_postMessage(
+    channel=canal_id,
+    text=f"({data['locatario']}) - {data['empreendimento']} - {data['unidade_metragem']} <@{user}>: *{data['tipo_ticket']}*",
+    blocks=[
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"({data['locatario']}) - {data['empreendimento']} - {data['unidade_metragem']} <@{user}>: *{data['tipo_ticket']}*"
             }
-        ]
-    )
-
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": services.formatar_mensagem_chamado(data, user)
+            }
+        },
+        {
+            "type": "actions",
+            "elements": [
+                {"type": "button", "text": {"type": "plain_text", "text": "🔄 Capturar"}, "action_id": "capturar_chamado"},
+                {"type": "button", "text": {"type": "plain_text", "text": "✅ Finalizar"}, "action_id": "finalizar_chamado"},
+                {"type": "button", "text": {"type": "plain_text", "text": "♻️ Reabrir"}, "action_id": "reabrir_chamado"},
+                {"type": "button", "text": {"type": "plain_text", "text": "❌ Cancelar"}, "action_id": "cancelar_chamado"},
+                {"type": "button", "text": {"type": "plain_text", "text": "✏️ Editar"}, "action_id": "editar_chamado"}
+            ]
+        }
+    ]
+)
     thread_ts = response["ts"]
 
     # ✅ Salva a ordem no banco com thread e canal
