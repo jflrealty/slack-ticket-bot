@@ -187,7 +187,7 @@ def enviar_relatorio(client, user_id, data_inicio=None, data_fim=None):
         writer = csv.writer(arquivo_csv)
         writer.writerow([
             "ID", "Tipo", "Contrato", "Locatário", "Empreendimento", "Unidade",
-            "Valor", "Responsável", "Solicitante", "Status", "SLA", "Histórico Reaberturas"
+            "Valor", "Responsável", "Solicitante", "Status", "Aberto em", "SLA", "Histórico Reaberturas"
         ])
         for c in chamados:
             writer.writerow([
@@ -201,6 +201,7 @@ def enviar_relatorio(client, user_id, data_inicio=None, data_fim=None):
                 get_nome_slack(c.responsavel),
                 get_nome_slack(c.solicitante),
                 c.status,
+                c.data_abertura.strftime("%d/%m/%Y"),
                 c.sla_status,
                 c.historico_reaberturas or "–"
             ])
@@ -262,12 +263,13 @@ def exportar_pdf(client, user_id, data_inicio=None, data_fim=None):
             get_nome_slack(c.responsavel),
             get_nome_slack(c.solicitante),
             c.status,
+            c.data_abertura.strftime("%d/%m/%Y"),
             "🔴" if c.sla_status == "fora do prazo" else "🟢",
             c.historico_reaberturas or "–"
         ])
 
     tabela = Table(dados, repeatRows=1, colWidths=[
-        30, 70, 70, 80, 70, 60, 50, 70, 70, 50, 30, 130
+        0, 70, 70, 80, 70, 60, 50, 70, 70, 50, 60, 30, 130
     ])
 
     tabela.setStyle(TableStyle([
