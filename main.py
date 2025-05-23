@@ -259,7 +259,7 @@ def handle_editar_submit(ack, body, view, client):
             "antes": antes,
             "depois": depois,
             "editado_por": nome_editor,
-            "data_edicao": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "data_edicao": datetime.now().strftime("%Y-%m-%d")
         })
 
         chamado.log_edicoes = json.dumps(historico, default=str)
