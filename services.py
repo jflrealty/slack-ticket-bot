@@ -180,7 +180,7 @@ def enviar_relatorio(client, user_id, data_inicio=None, data_fim=None):
         client.chat_postEphemeral(channel=user_id, user=user_id, text="❌ Nenhum chamado encontrado para exportar.")
         return
 
-    agora = datetime.now().strftime("%Y%m%d%H%M%S")
+    agora = datetime.now().strftime("%Y%m%d%")
     caminho = f"/tmp/chamados_{agora}.csv"
 
     with open(caminho, mode="w", newline="", encoding="utf-8") as arquivo_csv:
@@ -223,7 +223,7 @@ def exportar_pdf(client, user_id, data_inicio=None, data_fim=None):
         client.chat_postEphemeral(channel=user_id, user=user_id, text="❌ Nenhum chamado encontrado para exportar.")
         return
 
-    agora = datetime.now().strftime("%Y%m%d%H%M%S")
+    agora = datetime.now().strftime("%Y%m%d%")
     caminho = f"/tmp/chamados_{agora}.pdf"
 
     doc = SimpleDocTemplate(caminho, pagesize=landscape(A4))
