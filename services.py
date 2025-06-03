@@ -180,29 +180,49 @@ def enviar_relatorio(client, user_id, data_inicio=None, data_fim=None):
         client.chat_postEphemeral(channel=user_id, user=user_id, text="❌ Nenhum chamado encontrado para exportar.")
         return
 
-    agora = datetime.now().strftime("%Y%m%d%")
+    agora = datetime.now().strftime("%Y%m%d")
     caminho = f"/tmp/chamados_{agora}.csv"
 
-    with open(caminho, mode="w", newline="", encoding="utf-8") as arquivo_csv:
+    def formatar_data(data):
+        return data.strftime("%d/%m/%Y") if data else "–"
+
+    def formatar_valor(valor):
+        try:
+            return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        except:
+            return "–"
+
+    def resolver_nome(id_ou_grupo):
+        if not id_ou_grupo:
+            return "–"
+        if id_ou_grupo == "S08STJCNMHR":
+            return "Reservas"
+        return get_nome_slack(id_ou_grupo)
+
+    with open(caminho, mode="w", newline="", encoding="utf-8-sig") as arquivo_csv:
         writer = csv.writer(arquivo_csv)
         writer.writerow([
-            "ID", "Tipo", "Contrato", "Locatário", "Empreendimento", "Unidade",
-            "Valor", "Responsável", "Solicitante", "Status", "Aberto em", "SLA", "Histórico Reaberturas"
+            "ID", "Tipo", "Contrato", "Locatário", "Moradores", "Empreendimento", "Unidade",
+            "Data Entrada", "Data Saída", "Valor", "Responsável", "Solicitante",
+            "Status", "Aberto em", "SLA", "Histórico Reaberturas"
         ])
         for c in chamados:
             writer.writerow([
                 c.id,
-                c.tipo_ticket,
-                c.tipo_contrato,
-                c.locatario,
-                c.empreendimento,
-                c.unidade_metragem,
-                f"R$ {c.valor_locacao:.2f}" if c.valor_locacao else "",
-                get_nome_slack(c.responsavel),
-                get_nome_slack(c.solicitante),
-                c.status,
-                c.data_abertura.strftime("%d/%m/%Y"),
-                c.sla_status,
+                c.tipo_ticket or "–",
+                c.tipo_contrato or "–",
+                c.locatario or "–",
+                c.moradores or "–",
+                c.empreendimento or "–",
+                c.unidade_metragem or "–",
+                formatar_data(c.data_entrada),
+                formatar_data(c.data_saida),
+                formatar_valor(c.valor_locacao),
+                resolver_nome(c.responsavel),
+                resolver_nome(c.solicitante),
+                c.status or "–",
+                formatar_data(c.data_abertura),
+                c.sla_status or "–",
                 c.historico_reaberturas or "–"
             ])
 
