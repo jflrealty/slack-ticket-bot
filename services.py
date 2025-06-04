@@ -673,35 +673,72 @@ def montar_blocos_exportacao():
         {
             "type": "input",
             "block_id": "tipo_arquivo",
-            "label": {"type": "plain_text", "text": "Formato do Arquivo"},
+            "label": {
+                "type": "plain_text",
+                "text": "Formato do Arquivo"
+            },
             "element": {
                 "type": "static_select",
                 "action_id": "value",
-                "placeholder": {"type": "plain_text", "text": "Escolha o formato"},
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Escolha o formato"
+                },
                 "options": [
-                    {"text": {"type": "plain_text", "text": "PDF"}, "value": "pdf"},
-                    {"text": {"type": "plain_text", "text": "CSV"}, "value": "csv"}
+                    {
+                        "text": {
+                            "type": "plain_text",
+                            "text": "PDF"
+                        },
+                        "value": "pdf"
+                    },
+                    {
+                        "text": {
+                            "type": "plain_text",
+                            "text": "CSV"
+                        },
+                        "value": "csv"
+                    },
+                    {
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Excel"
+                        },
+                        "value": "xlsx"
+                    }
                 ]
             }
         },
         {
             "type": "input",
             "block_id": "data_inicio",
+            "label": {
+                "type": "plain_text",
+                "text": "Data Inicial"
+            },
             "element": {
                 "type": "datepicker",
                 "action_id": "value",
-                "placeholder": {"type": "plain_text", "text": "Escolha a data inicial"}
-            },
-            "label": {"type": "plain_text", "text": "Data Inicial"}
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Escolha a data inicial"
+                }
+            }
         },
         {
             "type": "input",
             "block_id": "data_fim",
+            "label": {
+                "type": "plain_text",
+                "text": "Data Final"
+            },
             "element": {
                 "type": "datepicker",
                 "action_id": "value",
-                "placeholder": {"type": "plain_text", "text": "Escolha a data final"}
-            },
-            "label": {"type": "plain_text", "text": "Data Final"}
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Escolha a data final"
+                }
+            }
         }
     ]
