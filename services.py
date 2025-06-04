@@ -14,6 +14,10 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment
+from openpyxl.utils import get_column_letter
+
 client_slack = WebClient(token=os.getenv("SLACK_BOT_TOKEN"))
 
 # 🧠 Buscar nome real do usuário no Slack
