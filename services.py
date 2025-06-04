@@ -391,8 +391,8 @@ def formatar_mensagem_chamado(data, user_id):
     def formatar(valor):
         if not valor or (isinstance(valor, str) and valor.strip() == ""):
             return "–"
-        if isinstance(valor, str) and valor.startswith("S"):  # grupo Slack
-            return f"<!subteam^{valor}>"
+        if valor == "S08STJCNMHR":
+            return "Reservas"
         if isinstance(valor, str) and valor.startswith("U"):  # usuário Slack
             return f"<@{valor}>"
         return str(valor)
