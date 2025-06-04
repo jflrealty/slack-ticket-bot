@@ -387,15 +387,15 @@ def lembrar_chamados_vencidos(client):
     db.close()
 
 # 📄 Formatar mensagem bonitinha
-def formatar_mensagem_chamado(data, user_id):
-    def formatar(valor):
-        if not valor or (isinstance(valor, str) and valor.strip() == ""):
-            return "–"
-        if valor == "S08STJCNMHR":
-            return "Reservas"
-        if isinstance(valor, str) and valor.startswith("U"):  # usuário Slack
+def formatar(valor):
+    if not valor or (isinstance(valor, str) and valor.strip() == ""):
+        return "–"
+    if isinstance(valor, str):
+        if valor.startswith("U"):
             return f"<@{valor}>"
-        return str(valor)
+        if valor.startswith("S"):
+            return resolver_nome(valor)  # já cobre 'Reservas'
+    return str(valor)
 
     valor_raw = data.get("valor_locacao")
     valor_formatado = "–"
