@@ -86,7 +86,7 @@ def montar_blocos_modal():
         {
             "type": "input",
             "block_id": "unidade_metragem",
-            "element": {"type": "plain_text_input", "action_id": "value"},
+            "element": {"type": "plain_text_input", "action_id": "value", "max_length": 10},
             "label": {"type": "plain_text", "text": "Unidade e Metragem"}
         },
         {
@@ -771,7 +771,7 @@ def enviar_relatorio_xlsx(client, user_id, data_inicio=None, data_fim=None):
 
     headers = [
         "ID", "Tipo", "Contrato", "Locatário", "Moradores", "Empreendimento", "Unidade",
-        "Data Entrada", "Data Saída", "Valor", "Responsável", "Solicitante",
+        "Data Entrada", "Data Saída", "Valor", "Responsável", "Capturado Por", "Solicitante",
         "Status", "Aberto em", "SLA", "Histórico Reaberturas"
     ]
     ws.append(headers)
