@@ -746,6 +746,15 @@ def montar_blocos_exportacao():
             }
         }
     ]
+
+# 🔧 Resolvedor de nome (antes da função principal)
+def resolver_nome(id_ou_grupo):
+    if not id_ou_grupo:
+        return "–"
+    if id_ou_grupo == "S08STJCNMHR":
+        return "Reservas"
+    return get_nome_slack(id_ou_grupo)
+    
 def enviar_relatorio_xlsx(client, user_id, data_inicio=None, data_fim=None):
     chamados = buscar_chamados(data_inicio, data_fim)
 
