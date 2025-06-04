@@ -18,6 +18,7 @@ class OrdemServico(Base):
     data_saida = Column(Date)
     valor_locacao = Column(Numeric)
     responsavel = Column(Text)
+    capturado_por = Column(String, nullable=True)
     solicitante = Column(Text)
     status = Column(String, default="aberto")
     responsavel_id = Column(Text)
