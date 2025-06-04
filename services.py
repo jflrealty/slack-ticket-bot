@@ -799,6 +799,7 @@ def enviar_relatorio_xlsx(client, user_id, data_inicio=None, data_fim=None):
             c.data_saida.strftime("%d/%m/%Y") if c.data_saida else "–",
             f"R$ {c.valor_locacao:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if c.valor_locacao else "–",
             resolver_nome(c.responsavel),
+            resolver_nome(c.capturado_por),
             resolver_nome(c.solicitante),
             c.status or "–",
             c.data_abertura.strftime("%d/%m/%Y") if c.data_abertura else "–",
