@@ -450,6 +450,7 @@ def capturar_chamado(client, body):
 
     chamado.status = "em análise"
     chamado.responsavel = user_id
+    chamado.capturado_por = user_id
     chamado.data_captura = datetime.now()
     db.commit()
     db.close()
