@@ -370,9 +370,11 @@ def exportar_chamados_handler(ack, body, view, client):
 
     if tipo == "pdf":
         services.exportar_pdf(client, user_id, data_inicio, data_fim)
+    elif tipo == "xlsx":
+        services.enviar_relatorio_xlsx(client, user_id, data_inicio, data_fim)
     else:
         services.enviar_relatorio(client, user_id, data_inicio, data_fim)
-
+        
 # 🔁 Verificador de SLA
 def iniciar_verificacao_sla():
     def loop():
