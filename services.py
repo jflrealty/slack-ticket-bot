@@ -746,3 +746,65 @@ def montar_blocos_exportacao():
             }
         }
     ]
+def enviar_relatorio_xlsx(client, user_id, data_inicio=None, data_fim=None):
+    chamados = buscar_chamados(data_inicio, data_fim)
+
+    if not chamados:
+        client.chat_postEphemeral(channel=user_id, user=user_id, text="❌ Nenhum chamado encontrado para exportar.")
+        return
+
+    agora = datetime.now().strftime("%Y%m%d")
+    caminho = f"/tmp/chamados_{agora}.xlsx"
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Chamados"
+
+    headers = [
+        "ID", "Tipo", "Contrato", "Locatário", "Moradores", "Empreendimento", "Unidade",
+        "Data Entrada", "Data Saída", "Valor", "Responsável", "Solicitante",
+        "Status", "Aberto em", "SLA", "Histórico Reaberturas"
+    ]
+    ws.append(headers)
+
+    bold = Font(bold=True)
+    center = Alignment(horizontal="center", vertical="center")
+
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num)
+        cell.font = bold
+        cell.alignment = center
+        ws.column_dimensions[get_column_letter(col_num)].width = 18
+
+    for c in chamados:
+        ws.append([
+            c.id,
+            c.tipo_ticket or "–",
+            c.tipo_contrato or "–",
+            c.locatario or "–",
+            c.moradores or "–",
+            c.empreendimento or "–",
+            c.unidade_metragem or "–",
+            c.data_entrada.strftime("%d/%m/%Y") if c.data_entrada else "–",
+            c.data_saida.strftime("%d/%m/%Y") if c.data_saida else "–",
+            f"R$ {c.valor_locacao:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if c.valor_locacao else "–",
+            get_nome_slack(c.responsavel),
+            get_nome_slack(c.solicitante),
+            c.status or "–",
+            c.data_abertura.strftime("%d/%m/%Y") if c.data_abertura else "–",
+            c.sla_status or "–",
+            c.historico_reaberturas or "–"
+        ])
+
+    wb.save(caminho)
+
+    response = client.conversations_open(users=user_id)
+    channel_id = response["channel"]["id"]
+
+    client.files_upload_v2(
+        channel=channel_id,
+        file=caminho,
+        title=f"Relatório de Chamados - {agora}.xlsx",
+        initial_comment="📎 Aqui está seu relatório em Excel."
+    )
+    
