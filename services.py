@@ -391,12 +391,12 @@ def formatar_mensagem_chamado(data, user_id):
     def formatar(valor):
         if not valor or (isinstance(valor, str) and valor.strip() == ""):
             return "–"
+        if isinstance(valor, str) and valor == "S08STJCNMHR":
+            return "Reservas"
         if isinstance(valor, str) and valor.startswith("S"):  # grupo Slack
-            if valor == "S08STJCNMHR":
-                return "*Reservas*"  # substituição manual
-            return f"[Grupo: {valor}]"
+            return f"`{valor}`"  # Evita erro de permissão e mostra o ID
         if isinstance(valor, str) and valor.startswith("U"):  # usuário Slack
-                return f"<@{valor}>"
+            return f"<@{valor}>"
         return str(valor)
 
     valor_raw = data.get("valor_locacao")
