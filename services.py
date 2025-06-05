@@ -387,17 +387,24 @@ def lembrar_chamados_vencidos(client):
     db.close()
 
 # 📄 Formatar mensagem 
-def formatar_mensagem_chamado(data, user_id):
-    def formatar(valor):
-        if not valor or (isinstance(valor, str) and valor.strip() == ""):
-            return "–"
-        if isinstance(valor, str) and valor == "S08STJCNMHR":
+def formatar(valor):
+    if not valor or (isinstance(valor, str) and valor.strip() == ""):
+        return "–"
+    if isinstance(valor, str):
+        if valor == "S08STJCNMHR":
             return "Reservas"
-        if isinstance(valor, str) and valor.startswith("S"):  # grupo Slack
-            return f"`{valor}`"  # Evita erro de permissão e mostra o ID
-        if isinstance(valor, str) and valor.startswith("U"):  # usuário Slack
-            return f"<@{valor}>"
-        return str(valor)
+        if valor.startswith("S"):  # Grupo do Slack
+            try:
+                grupo = client_slack.usergroups_info(usergroup=valor)
+                return grupo["usergroup"]["name"]
+            except:
+                return f"`{valor}`"  # fallback seguro
+        if valor.startswith("U"):  # Usuário Slack
+            try:
+                return get_nome_slack(valor)
+            except:
+                return f"`{valor}`"
+    return str(valor)
 
     valor_raw = data.get("valor_locacao")
     valor_formatado = "–"
