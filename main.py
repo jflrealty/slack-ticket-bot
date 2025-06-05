@@ -9,6 +9,7 @@ from models import OrdemServico
 
 # 📚 Serviços internos
 import services
+from services import formatar_mensagem_chamado
 
 # 🛠️ Utilitários
 import os
