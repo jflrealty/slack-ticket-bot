@@ -387,16 +387,17 @@ def lembrar_chamados_vencidos(client):
     db.close()
 
 # 📄 Formatar mensagem
-def formatar_para_slack(valor):
-    if not valor or (isinstance(valor, str) and valor.strip() == ""):
-        return "–"
-    if valor == "S08STJCNMHR":
-        return "<!subteam^S08STJCNMHR|Reservas>"  # garante nome legível também
-    if isinstance(valor, str) and valor.startswith("S"):
-        return f"<!subteam^{valor}>"
-    if isinstance(valor, str) and valor.startswith("U"):
-        return f"<@{valor}>"
-    return str(valor)
+def formatar_mensagem_chamado(data, user_id):
+    def formatar_para_slack(valor):
+        if not valor or (isinstance(valor, str) and valor.strip() == ""):
+            return "–"
+        if valor == "S08STJCNMHR":
+            return "<!subteam^S08STJCNMHR|Reservas>"  # garante nome legível também
+        if isinstance(valor, str) and valor.startswith("S"):
+            return f"<!subteam^{valor}>"
+        if isinstance(valor, str) and valor.startswith("U"):
+            return f"<@{valor}>"
+        return str(valor)
 
     valor_raw = data.get("valor_locacao")
     valor_formatado = "–"
@@ -413,18 +414,18 @@ def formatar_para_slack(valor):
     saida = data.get('data_saida')
 
     return (
-    f"*Tipo:* {formatar_para_slack(data.get('tipo_ticket'))}\n"
-    f"*Contrato:* {formatar_para_slack(data.get('tipo_contrato'))}\n"
-    f"*Locatário:* {formatar_para_slack(data.get('locatario'))}\n"
-    f"*Moradores:* {formatar_para_slack(data.get('moradores'))}\n"
-    f"*Empreendimento:* {formatar_para_slack(data.get('empreendimento'))}\n"
-    f"*Unidade:* {formatar_para_slack(data.get('unidade_metragem'))}\n"
-    f"*Entrada:* {entrada.strftime('%d/%m/%Y') if entrada else '–'}\n"
-    f"*Saída:* {saida.strftime('%d/%m/%Y') if saida else '–'}\n"
-    f"*Valor:* {valor_formatado}\n"
-    f"*Responsável:* {formatar_para_slack(data.get('responsavel'))}\n"
-    f"*Solicitante:* <@{user_id}>"
-)
+        f"*Tipo:* {formatar_para_slack(data.get('tipo_ticket'))}\n"
+        f"*Contrato:* {formatar_para_slack(data.get('tipo_contrato'))}\n"
+        f"*Locatário:* {formatar_para_slack(data.get('locatario'))}\n"
+        f"*Moradores:* {formatar_para_slack(data.get('moradores'))}\n"
+        f"*Empreendimento:* {formatar_para_slack(data.get('empreendimento'))}\n"
+        f"*Unidade:* {formatar_para_slack(data.get('unidade_metragem'))}\n"
+        f"*Entrada:* {entrada.strftime('%d/%m/%Y') if entrada else '–'}\n"
+        f"*Saída:* {saida.strftime('%d/%m/%Y') if saida else '–'}\n"
+        f"*Valor:* {valor_formatado}\n"
+        f"*Responsável:* {formatar_para_slack(data.get('responsavel'))}\n"
+        f"*Solicitante:* <@{user_id}>"
+    )
     
 from database import SessionLocal
 from models import OrdemServico
