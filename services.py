@@ -419,7 +419,7 @@ def formatar_mensagem_chamado(data, user_id):
         f"*Entrada:* {formatar(data.get('data_entrada').strftime('%d/%m/%Y') if data.get('data_entrada') else '–')}\n"
         f"*Saída:* {formatar(data.get('data_saida').strftime('%d/%m/%Y') if data.get('data_saida') else '–')}\n"
         f"*Valor:* {valor_formatado}\n"
-        f"*Responsável:* {resolver_nome(data.get('responsavel'))}\n"
+        f"*Responsável:* {formatar(data.get('responsavel'))}\n"
         f"*Solicitante:* <@{user_id}>"
     )
     
