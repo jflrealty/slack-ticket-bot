@@ -386,25 +386,26 @@ def lembrar_chamados_vencidos(client):
         )
     db.close()
 
-# 📄 Formatar mensagem 
-def formatar(valor):
-    if not valor or (isinstance(valor, str) and valor.strip() == ""):
-        return "–"
-    if isinstance(valor, str):
-        if valor == "S08STJCNMHR":
-            return "Reservas"
-        if valor.startswith("S"):  # Grupo do Slack
-            try:
-                grupo = client_slack.usergroups_info(usergroup=valor)
-                return grupo["usergroup"]["name"]
-            except:
-                return f"`{valor}`"  # fallback seguro
-        if valor.startswith("U"):  # Usuário Slack
-            try:
-                return get_nome_slack(valor)
-            except:
-                return f"`{valor}`"
-    return str(valor)
+# 📄 Formatar mensagem
+def formatar_mensagem_chamado(data, user_id):
+    def formatar(valor):
+        if not valor or (isinstance(valor, str) and valor.strip() == ""):
+            return "–"
+        if isinstance(valor, str):
+            if valor == "S08STJCNMHR":
+                return "Reservas"
+            if valor.startswith("S"):  # Grupo Slack
+                try:
+                    grupo = client_slack.usergroups_info(usergroup=valor)
+                    return grupo["usergroup"]["name"]
+                except:
+                    return f"`{valor}`"  # fallback
+            if valor.startswith("U"):  # Usuário Slack
+                try:
+                    return get_nome_slack(valor)
+                except:
+                    return f"`{valor}`"
+        return str(valor)
 
     valor_raw = data.get("valor_locacao")
     valor_formatado = "–"
@@ -417,6 +418,9 @@ def formatar(valor):
     except:
         valor_formatado = str(valor_raw) if valor_raw else "–"
 
+    entrada = data.get('data_entrada')
+    saida = data.get('data_saida')
+
     return (
         f"*Tipo:* {formatar(data.get('tipo_ticket'))}\n"
         f"*Contrato:* {formatar(data.get('tipo_contrato'))}\n"
@@ -424,8 +428,8 @@ def formatar(valor):
         f"*Moradores:* {formatar(data.get('moradores'))}\n"
         f"*Empreendimento:* {formatar(data.get('empreendimento'))}\n"
         f"*Unidade:* {formatar(data.get('unidade_metragem'))}\n"
-        f"*Entrada:* {formatar(data.get('data_entrada').strftime('%d/%m/%Y') if data.get('data_entrada') else '–')}\n"
-        f"*Saída:* {formatar(data.get('data_saida').strftime('%d/%m/%Y') if data.get('data_saida') else '–')}\n"
+        f"*Entrada:* {entrada.strftime('%d/%m/%Y') if entrada else '–'}\n"
+        f"*Saída:* {saida.strftime('%d/%m/%Y') if saida else '–'}\n"
         f"*Valor:* {valor_formatado}\n"
         f"*Responsável:* {formatar(data.get('responsavel'))}\n"
         f"*Solicitante:* <@{user_id}>"
