@@ -518,7 +518,7 @@ def abrir_modal_reabertura(client, body):
                         "action_id": "value",
                         "placeholder": {"type": "plain_text", "text": "Escolha o novo tipo de ticket"},
                         "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
-                                    for opt in ["Reserva", "Lista de Espera", "Pré bloqueio", "Prorrogação", "Aditivo"]]
+                                    for opt in ["Lista de Espera", "Pré bloqueio", "Reserva", "Aditivo", "Prorrogação", "Saída Antecipada", "Saída Confirmada", "Background Check", "Fatura"]]
                     },
                     "label": {"type": "plain_text", "text": "Novo Tipo de Ticket"}
                 }
