@@ -626,6 +626,8 @@ def abrir_modal_edicao(client, trigger_id, thread_ts):
     )
 
 # ♻️ Reabrir chamado
+from deepdiff import DeepDiff
+
 def reabrir_chamado(client, body, view):
     novo_tipo = view["state"]["values"]["novo_tipo_ticket"]["value"]["selected_option"]["value"]
     ts = view["private_metadata"]
@@ -635,16 +637,48 @@ def reabrir_chamado(client, body, view):
     chamado = db.query(OrdemServico).filter(OrdemServico.thread_ts == ts).first()
 
     if chamado:
+        # Salvar o estado anterior
+        estado_anterior = {
+            "tipo_ticket": chamado.tipo_ticket,
+            "status": chamado.status,
+            "responsavel": chamado.responsavel,
+            "data_captura": chamado.data_captura,
+            "data_fechamento": chamado.data_fechamento
+        }
+
+        # Aplicar alterações da reabertura
         chamado.tipo_ticket = novo_tipo
         chamado.status = "aberto"
         chamado.data_captura = None
         chamado.data_fechamento = None
         chamado.responsavel = None
 
-        now = datetime.now().strftime("%Y-%m-%d")
+        # Salvar o novo estado
+        estado_novo = {
+            "tipo_ticket": chamado.tipo_ticket,
+            "status": chamado.status,
+            "responsavel": chamado.responsavel,
+            "data_captura": chamado.data_captura,
+            "data_fechamento": chamado.data_fechamento
+        }
+
+        # Comparar e gerar log de alterações
+        diferencas = DeepDiff(estado_anterior, estado_novo, ignore_order=True).to_dict()
+        log = ""
+        if "values_changed" in diferencas:
+            for campo, detalhe in diferencas["values_changed"].items():
+                campo_nome = campo.split("['")[-1].replace("']", "")
+                valor_antigo = detalhe['old_value']
+                valor_novo = detalhe['new_value']
+                log += f"• {campo_nome}: '{valor_antigo}' ➝ '{valor_novo}'\n"
+
+        # Histórico + log
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         nome_real = get_nome_slack(user_id)
-        novo_historico = f"[{now}] {nome_real} reabriu para *{novo_tipo}*\n"
-        chamado.historico_reaberturas = novo_historico
+        historico = f"[{now}] {nome_real} reabriu para *{novo_tipo}*\n"
+        chamado.historico_reaberturas = historico
+        if log:
+            chamado.log_edicoes = (chamado.log_edicoes or "") + f"[{now}] {nome_real} alterou campos:\n{log}\n"
 
         canal_id = chamado.canal_id
         thread_ts = chamado.thread_ts
@@ -652,7 +686,6 @@ def reabrir_chamado(client, body, view):
         db.commit()
         db.close()
 
-        # ✅ Posta confirmação apenas
         client.chat_postMessage(
             channel=canal_id,
             thread_ts=thread_ts,
