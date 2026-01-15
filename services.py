@@ -43,9 +43,16 @@ def montar_blocos_modal():
                 "action_id": "value",
                 "placeholder": {"type": "plain_text", "text": "Escolha"},
                 "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
-                            for opt in ["Lista de Espera", "Pré bloqueio", "Reserva", "Aditivo", "Prorrogação", "Saída Antecipada", "Saída Confirmada", "Background Check", "Fatura"]],
+                            for opt in ["Lista de Espera", "Pré bloqueio", "Reserva", "Aditivo", "Prorrogação",
+                                        "Saída Antecipada", "Saída Confirmada", "Background Check", "Fatura"]],
             },
             "label": {"type": "plain_text", "text": "Tipo de Ticket"}
+        },
+        {
+            "type": "input",
+            "block_id": "locatario",
+            "element": {"type": "plain_text_input", "action_id": "value"},
+            "label": {"type": "plain_text", "text": "Locatário"}
         },
         {
             "type": "input",
