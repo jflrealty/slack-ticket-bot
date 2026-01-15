@@ -49,27 +49,9 @@ def montar_blocos_modal():
         },
         {
             "type": "input",
-            "block_id": "tipo_contrato",
-            "element": {
-                "type": "static_select",
-                "action_id": "value",
-                "placeholder": {"type": "plain_text", "text": "Escolha"},
-                "options": [{"text": {"type": "plain_text", "text": opt}, "value": opt}
-                            for opt in ["Short Stay", "Temporada", "Long Stay", "Comodato", "Cortesia"]],
-            },
-            "label": {"type": "plain_text", "text": "Tipo de Contrato"}
-        },
-        {
-            "type": "input",
             "block_id": "locatario",
             "element": {"type": "plain_text_input", "action_id": "value"},
             "label": {"type": "plain_text", "text": "Locatário"}
-        },
-        {
-            "type": "input",
-            "block_id": "moradores",
-            "element": {"type": "plain_text_input", "action_id": "value"},
-            "label": {"type": "plain_text", "text": "Moradores"}
         },
         {
             "type": "input",
@@ -87,25 +69,13 @@ def montar_blocos_modal():
             "type": "input",
             "block_id": "unidade_metragem",
             "element": {"type": "plain_text_input", "action_id": "value", "max_length": 10},
-            "label": {"type": "plain_text", "text": "Unidade e Metragem"}
+            "label": {"type": "plain_text", "text": "Unidade"}
         },
         {
             "type": "input",
-            "block_id": "data_entrada",
-            "element": {"type": "datepicker", "action_id": "value"},
-            "label": {"type": "plain_text", "text": "Data de Entrada"}
-        },
-        {
-            "type": "input",
-            "block_id": "data_saida",
-            "element": {"type": "datepicker", "action_id": "value"},
-            "label": {"type": "plain_text", "text": "Data de Saída"}
-        },
-        {
-            "type": "input",
-            "block_id": "valor_locacao",
-            "element": {"type": "plain_text_input", "action_id": "value"},
-            "label": {"type": "plain_text", "text": "Valor da Locação"}
+            "block_id": "unidade_metragem",
+            "element": {"type": "plain_text_input", "action_id": "value", "max_length": 16},
+            "label": {"type": "plain_text", "text": "Número da Reserva"}
         },
         {
             "type": "input",
