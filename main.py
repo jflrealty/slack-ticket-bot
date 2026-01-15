@@ -67,28 +67,29 @@ def handle_modal_submission(ack, body, view, client):
         )
 
     data["solicitante"] = user
-    data["data_entrada"] = (
-        datetime.strptime(data["data_entrada"], "%Y-%m-%d") if data.get("data_entrada") else None
-    )
-    data["data_saida"] = (
-        datetime.strptime(data["data_saida"], "%Y-%m-%d") if data.get("data_saida") else None
-    )
-    data["valor_locacao"] = (
-        float(data["valor_locacao"].replace("R$", "").replace(".", "").replace(",", ".").strip())
-        if data.get("valor_locacao")
-        else None
-    )
+
+    # ✅ campos antigos: mantém compatibilidade com criar_ordem_servico atual
+    data["tipo_contrato"] = None
+    data["moradores"] = None
+    data["data_entrada"] = None
+    data["data_saida"] = None
+    data["valor_locacao"] = None
 
     # ✅ Mensagem principal no canal público
+    numero_reserva = data.get("numero_reserva") or "–"
+
     response = client.chat_postMessage(
         channel=canal_id,
-        text=f"({data['locatario']}) - {data['empreendimento']} - {data['unidade_metragem']} <@{user}>: *{data['tipo_ticket']}*",
+        text=f"({data['locatario']}) - {data['empreendimento']} - {data['unidade_metragem']} - Reserva: {numero_reserva} <@{user}>: *{data['tipo_ticket']}*",
         blocks=[
             {
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"({data['locatario']}) - {data['empreendimento']} - {data['unidade_metragem']} <@{user}>: *{data['tipo_ticket']}*"
+                    "text": (
+                        f"({data['locatario']}) - {data['empreendimento']} - {data['unidade_metragem']} "
+                        f"- *Reserva:* {numero_reserva} <@{user}>: *{data['tipo_ticket']}*"
+                    )
                 }
             },
             {
@@ -97,8 +98,7 @@ def handle_modal_submission(ack, body, view, client):
                     {"type": "button", "text": {"type": "plain_text", "text": "🔄 Capturar"}, "action_id": "capturar_chamado"},
                     {"type": "button", "text": {"type": "plain_text", "text": "✅ Finalizar"}, "action_id": "finalizar_chamado"},
                     {"type": "button", "text": {"type": "plain_text", "text": "♻️ Reabrir"}, "action_id": "reabrir_chamado"},
-                    {"type": "button", "text": {"type": "plain_text", "text": "❌ Cancelar"}, "action_id": "cancelar_chamado"}
-                    #{"type": "button", "text": {"type": "plain_text", "text": "✏️ Editar"}, "action_id": "editar_chamado"}#
+                    {"type": "button", "text": {"type": "plain_text", "text": "❌ Cancelar"}, "action_id": "cancelar_chamado"},
                 ]
             }
         ]
@@ -307,7 +307,7 @@ def handle_editar_submit(ack, body, view, client):
         except Exception as e:
             print(f"❌ Erro ao atualizar mensagem no Slack: {e}")
             client.chat_postEphemeral(
-                channel=user_id,
+                channel=chamado.canal_id or os.getenv("SLACK_CANAL_ID", "C06TTKNEBHA"),
                 user=user_id,
                 text="❌ Ocorreu um erro ao atualizar a mensagem da thread."
             )
