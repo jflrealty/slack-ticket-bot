@@ -15,6 +15,7 @@ class OrdemServico(Base):
     empreendimento = Column(Text)
     unidade_metragem = Column(Text)
     data_entrada = Column(Date)
+    numero_reserva = Column(String, nullable=True)
     data_saida = Column(Date)
     valor_locacao = Column(Numeric)
     responsavel = Column(Text)
