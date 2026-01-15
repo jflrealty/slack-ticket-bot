@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS ordens_servico (
     moradores TEXT,
     empreendimento TEXT,
     unidade_metragem TEXT,
+    numero_reserva TEXT,
     data_entrada DATE,
     data_saida DATE,
     valor_locacao NUMERIC,
