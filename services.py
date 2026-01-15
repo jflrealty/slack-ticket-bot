@@ -104,24 +104,30 @@ def criar_ordem_servico(data, thread_ts=None, canal_id=None):
     try:
         sla_prazo = datetime.utcnow() + timedelta(hours=24)
         nova_os = OrdemServico(
-            tipo_ticket=data["tipo_ticket"],
-            tipo_contrato=data["tipo_contrato"],
-            locatario=data["locatario"],
-            moradores=data["moradores"],
-            empreendimento=data["empreendimento"],
-            unidade_metragem=data["unidade_metragem"],
+            tipo_ticket=data.get("tipo_ticket"),
+
+            # ✅ NOVO FLUXO (6 campos)
+            locatario=data.get("locatario"),
+            empreendimento=data.get("empreendimento"),
+            unidade_metragem=data.get("unidade_metragem"),
             numero_reserva=data.get("numero_reserva"),
-            data_entrada=data["data_entrada"],
-            data_saida=data["data_saida"],
-            valor_locacao=data["valor_locacao"],
-            responsavel=data["responsavel"],
-            solicitante=data["solicitante"],
+            responsavel=data.get("responsavel"),
+
+            solicitante=data.get("solicitante"),
+
             status="aberto",
             data_abertura=datetime.utcnow(),
             sla_limite=sla_prazo,
             sla_status="dentro do prazo",
             thread_ts=thread_ts,
-            canal_id=canal_id
+            canal_id=canal_id,
+
+            # 🧊 CAMPOS ANTIGOS (não usados por enquanto)
+            # tipo_contrato=data.get("tipo_contrato"),
+            # moradores=data.get("moradores"),
+            # data_entrada=data.get("data_entrada"),
+            # data_saida=data.get("data_saida"),
+            # valor_locacao=data.get("valor_locacao"),
         )
         session.add(nova_os)
         session.commit()
@@ -129,6 +135,7 @@ def criar_ordem_servico(data, thread_ts=None, canal_id=None):
     except Exception as e:
         print("❌ Erro ao salvar no banco:", e)
         session.rollback()
+        nova_os = None
     finally:
         session.close()
     return nova_os
