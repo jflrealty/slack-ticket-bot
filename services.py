@@ -371,37 +371,21 @@ def formatar_mensagem_chamado(data, user_id):
         if not valor or (isinstance(valor, str) and valor.strip() == ""):
             return "–"
         if valor == "S08STJCNMHR":
-            return "<!subteam^S08STJCNMHR|Reservas>"  # garante nome legível também
+            return "<!subteam^S08STJCNMHR|Reservas>"
         if isinstance(valor, str) and valor.startswith("S"):
             return f"<!subteam^{valor}>"
         if isinstance(valor, str) and valor.startswith("U"):
             return f"<@{valor}>"
         return str(valor)
 
-    valor_raw = data.get("valor_locacao")
-    valor_formatado = "–"
-    try:
-        if isinstance(valor_raw, (int, float)):
-            valor_formatado = f"R$ {valor_raw:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        elif isinstance(valor_raw, str):
-            valor_float = float(valor_raw.replace("R$", "").replace(".", "").replace(",", ".").strip())
-            valor_formatado = f"R$ {valor_float:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except:
-        valor_formatado = str(valor_raw) if valor_raw else "–"
-
-    entrada = data.get('data_entrada')
-    saida = data.get('data_saida')
+    numero_reserva = data.get("numero_reserva") or "–"
 
     return (
         f"*Tipo:* {formatar_para_slack(data.get('tipo_ticket'))}\n"
-        f"*Contrato:* {formatar_para_slack(data.get('tipo_contrato'))}\n"
         f"*Locatário:* {formatar_para_slack(data.get('locatario'))}\n"
-        f"*Moradores:* {formatar_para_slack(data.get('moradores'))}\n"
         f"*Empreendimento:* {formatar_para_slack(data.get('empreendimento'))}\n"
         f"*Unidade:* {formatar_para_slack(data.get('unidade_metragem'))}\n"
-        f"*Entrada:* {entrada.strftime('%d/%m/%Y') if entrada else '–'}\n"
-        f"*Saída:* {saida.strftime('%d/%m/%Y') if saida else '–'}\n"
-        f"*Valor:* {valor_formatado}\n"
+        f"*Reserva:* {formatar_para_slack(numero_reserva)}\n"
         f"*Responsável:* {formatar_para_slack(data.get('responsavel'))}\n"
         f"*Solicitante:* <@{user_id}>"
     )
